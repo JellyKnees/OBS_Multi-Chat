@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // Force all styling and scrolling with CSS
+    // Force all styling with inline CSS
     const style = document.createElement('style');
     style.textContent = `
         #chat-container {
@@ -8,24 +8,34 @@ document.addEventListener('DOMContentLoaded', () => {
             scroll-behavior: smooth !important;
         }
         .chat-message {
-            cursor: pointer !important;
-            margin-bottom: 8px !important;
+            cursor: pointer !important; 
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.8) !important;
         }
         .youtube .username {
             color: #ff0000 !important;
             font-family: 'Inter', sans-serif !important;
             font-weight: bold !important;
-            font-size: 14px !important;
+            font-size: 18px !important;
         }
         .twitch .username {
             color: #9146FF !important;
             font-family: 'Inter', sans-serif !important;
             font-weight: bold !important;
-            font-size: 14px !important;
+            font-size: 18px !important;
         }
         .message-content {
             color: white !important;
             font-family: 'Inter', sans-serif !important;
+            font-size: 18px !important;
+            /* Fix for long unbroken text */
+            word-wrap: break-word !important;
+            overflow-wrap: break-word !important;
+            word-break: break-word !important;
+        }
+        .message-content a {
+            color: white !important;
+            text-decoration: none !important;
+            pointer-events: none !important;
         }
         #settings-panel, #toggle-settings {
             display: none !important;
