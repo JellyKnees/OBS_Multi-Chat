@@ -56,11 +56,13 @@ body {
     color: var(--text-color);
 }
 
-.chat-message.youtube {
+.chat-message.youtube,
+.youtube {
     border-left: 3px solid var(--youtube-color);
 }
 
-.chat-message.twitch {
+.chat-message.twitch,
+.twitch {
     border-left: 3px solid var(--twitch-color);
 }
 
@@ -84,7 +86,7 @@ body {
     max-height: 100%;
 }
 
-/* Username styling */
+/* Username styling - critical styling */
 .username {
     font-weight: bold !important;
     margin-right: 8px !important;
@@ -92,12 +94,21 @@ body {
     font-size: 14px !important;
 }
 
-/* Platform-specific username colors - these rules override any inline styles */
-.chat-message.youtube .username {
+/* Platform-specific username colors */
+.youtube .username {
     color: var(--youtube-color) !important;
 }
 
-.chat-message.twitch .username {
+.twitch .username {
+    color: var(--twitch-color) !important;
+}
+
+/* Apply the same to the highlighted container */
+#highlighted-message-container.youtube .username {
+    color: var(--youtube-color) !important;
+}
+
+#highlighted-message-container.twitch .username {
     color: var(--twitch-color) !important;
 }
 
@@ -124,7 +135,7 @@ body {
 }
 
 .message-content {
-    color: #ffffff !important;
+    color: white !important;
     line-height: 1.4;
     font-family: 'Inter', sans-serif !important;
     font-weight: normal !important;

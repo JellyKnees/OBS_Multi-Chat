@@ -1,3 +1,5 @@
+// Create a new server.js file that connects to the highlight server
+
 const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
@@ -5,9 +7,12 @@ const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
 
+// Import highlight server functions
+const highlightServer = require('./highlight-server');
+
 // Initialize Express app
 const app = express();
-app.use(cors()); // Enable CORS for all routes
+app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '../overlay')));
 
@@ -17,7 +22,7 @@ const server = http.createServer(app);
 // Initialize Socket.IO
 const io = socketIo(server, {
   cors: {
-    origin: "*", // Allow all origins
+    origin: "*",
     methods: ["GET", "POST"],
     credentials: true
   }
@@ -25,13 +30,12 @@ const io = socketIo(server, {
 
 // Chat message storage
 let chatMessages = [];
-let highlightedMessage = null;
 
 // Settings storage
 let settings = {
   theme: 'dark',
   fontSize: 13,
-  messageLimit: 10,
+  messageLimit: 50,
   showBadges: true,
   showTimestamps: false,
   showPlatforms: true,
@@ -66,17 +70,11 @@ function saveSettings() {
 
 // Socket.IO connection handling
 io.on('connection', (socket) => {
-  console.log('Client connected:', socket.id, 'from', socket.handshake.headers.origin || 'unknown origin');
+  console.log('Client connected to main server:', socket.id);
   
   // Send existing messages to newly connected clients
   socket.emit('chat-history', chatMessages);
   console.log(`Sent chat history (${chatMessages.length} messages) to client`);
-  
-  // If there's a highlighted message, send it
-  if (highlightedMessage) {
-    socket.emit('highlight-message', highlightedMessage);
-    console.log('Sent highlighted message to client:', highlightedMessage.id);
-  }
 
   // Handle new chat messages from extension
   socket.on('chat-message', (message) => {
@@ -100,9 +98,9 @@ io.on('connection', (socket) => {
     // Store message
     chatMessages.push(message);
     
-    // Keep only the most recent messages
-    if (chatMessages.length > 200) {
-      chatMessages = chatMessages.slice(-200);
+    // Keep only the most recent 50 messages
+    if (chatMessages.length > 50) {
+      chatMessages = chatMessages.slice(-50);
     }
     
     // Broadcast to all clients
@@ -110,7 +108,7 @@ io.on('connection', (socket) => {
     console.log('Message broadcasted to all clients');
   });
 
-  // Handle message highlighting
+  // Handle message highlighting - Send only to highlight server
   socket.on('highlight-message', (messageId) => {
     console.log('Highlight requested for message:', messageId);
     
@@ -118,9 +116,9 @@ io.on('connection', (socket) => {
     const message = chatMessages.find(msg => msg.id === messageId);
     
     if (message) {
-      highlightedMessage = message;
-      io.emit('highlight-message', message);
-      console.log('Message highlighted and broadcasted');
+      // Send to highlight server only
+      highlightServer.sendHighlightMessage(message);
+      console.log('Message sent to highlight server');
     } else {
       console.error('Message not found for highlighting:', messageId);
     }
@@ -129,13 +127,12 @@ io.on('connection', (socket) => {
   // Handle clearing highlighted message
   socket.on('clear-highlight', () => {
     console.log('Clearing highlighted message');
-    highlightedMessage = null;
-    io.emit('clear-highlight');
+    highlightServer.clearHighlightMessage();
   });
 
   // Handle disconnection
   socket.on('disconnect', () => {
-    console.log('Client disconnected:', socket.id);
+    console.log('Client disconnected from main server:', socket.id);
   });
   
   // Handle errors
@@ -217,6 +214,6 @@ app.get('/test-message', (req, res) => {
 // Start server
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
-  console.log(`Add http://localhost:${PORT} as a browser source in OBS`);
+  console.log(`Main server running on http://localhost:${PORT}`);
+  console.log(`Add http://localhost:${PORT} as a browser source in OBS for chat`);
 });

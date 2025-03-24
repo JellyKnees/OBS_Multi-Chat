@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Highlighted Message Only</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: transparent;
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            width: 100vw;
+        }
+        
+        #highlighted-message {
+            padding: 20px;
+            background-color: #1a1a1a;
+            border-radius: 12px;
+            display: none;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+            cursor: pointer;
+            min-width: 200px;
+            max-width: 80%;
+            text-align: center;
+        }
+        
+        .youtube .username {
+            color: #ff0000 !important;
+            font-family: 'Inter', sans-serif !important;
+            font-weight: bold !important;
+            font-size: 22px !important;
+        }
+        
+        .twitch .username {
+            color: #9146FF !important;
+            font-family: 'Inter', sans-serif !important;
+            font-weight: bold !important;
+            font-size: 22px !important;
+        }
+        
+        .message-header {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 12px;
+        }
+        
+        .platform-icon {
+            width: 28px;
+            height: 28px;
+            margin-right: 10px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+        
+        .message-content {
+            color: white !important;
+            font-family: 'Inter', sans-serif !important;
+            font-size: 18px !important;
+            line-height: 1.5;
+        }
+        
+        @keyframes slideInFromRight {
+            from { 
+                opacity: 0; 
+                transform: translateX(50px); 
+            }
+            to { 
+                opacity: 1; 
+                transform: translateX(0); 
+            }
+        }
+        
+        @keyframes slideOutToLeft {
+            from { 
+                opacity: 1; 
+                transform: translateX(0); 
+            }
+            to { 
+                opacity: 0; 
+                transform: translateX(-50px); 
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="highlighted-message">
+        <!-- Highlighted message will be displayed here -->
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        // Platform icons
+        const platformIcons = {
+            youtube: '🔴',
+            twitch: '💜',
+            test: '🔧'
+        };
+        
+        // Get the highlighted message container
+        const highlightedContainer = document.getElementById('highlighted-message');
+        
+        // Connect to Socket.IO
+        const socket = io();
+        
+        // Log connection status
+        socket.on('connect', () => {
+            console.log('Connected to highlight server');
+        });
+        
+        // Handle highlighted messages
+        socket.on('highlight-message', (message) => {
+            console.log('Received highlighted message:', message);
+            
+            // Set platform class
+            highlightedContainer.className = '';
+            highlightedContainer.classList.add(message.platform.toLowerCase());
+            
+            // Create message HTML
+            highlightedContainer.innerHTML = `
+                <div class="message-header">
+                    <span class="platform-icon">${platformIcons[message.platform.toLowerCase()] || '❓'}</span>
+                    <span class="username">${message.username}</span>
+                </div>
+                <div class="message-content">${message.content || ''}</div>
+            `;
+            
+            // Apply slide-in animation and show
+            highlightedContainer.style.animation = 'slideInFromRight 0.5s ease-in-out';
+            highlightedContainer.style.display = 'block';
+            
+            // Add click handler to clear
+            highlightedContainer.onclick = () => {
+                socket.emit('clear-highlight');
+            };
+        });
+        
+        // Handle clearing highlighted message
+        socket.on('clear-highlight', () => {
+            console.log('Clearing highlighted message');
+            
+            // Apply slide-out animation
+            highlightedContainer.style.animation = 'slideOutToLeft 0.5s ease-in-out';
+            
+            // Hide after animation completes
+            setTimeout(() => {
+                highlightedContainer.style.display = 'none';
+            }, 500);
+        });
+    </script>
+</body>
+</html>
