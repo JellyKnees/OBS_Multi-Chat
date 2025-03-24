@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OBS Multi-Platform Chat Overlay</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Chat messages container -->
+        <div id="chat-container">
+            <!-- Chat messages will be inserted here -->
+        </div>
+        
+        <!-- Highlighted message container -->
+        <div id="highlighted-message-container">
+            <!-- Highlighted message will be displayed here -->
+        </div>
+        
+        <!-- Settings panel (toggle with button) -->
+        <div id="settings-panel" class="hidden">
+            <h2>Customize Chat Display</h2>
+            
+            <div class="setting-group">
+                <label for="theme-select">Theme:</label>
+                <select id="theme-select">
+                    <option value="dark">Dark</option>
+                    <option value="light">Light</option>
+                    <option value="custom">Custom</option>
+                </select>
+            </div>
+            
+            <div class="setting-group">
+                <label for="font-size">Font Size:</label>
+                <input type="range" id="font-size" min="12" max="24" value="16">
+                <span id="font-size-value">16px</span>
+            </div>
+            
+            <div class="setting-group">
+                <label for="message-limit">Max Messages:</label>
+                <input type="number" id="message-limit" min="10" max="200" value="50">
+            </div>
+            
+            <div class="setting-group">
+                <label>Display Options:</label>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="show-badges" checked>
+                    <label for="show-badges">Show Badges</label>
+                </div>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="show-timestamps">
+                    <label for="show-timestamps">Show Timestamps</label>
+                </div>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="show-platforms" checked>
+                    <label for="show-platforms">Show Platform Icons</label>
+                </div>
+            </div>
+            
+            <div class="setting-group">
+                <label>Custom Colors:</label>
+                <div class="color-picker">
+                    <label for="background-color">Background:</label>
+                    <input type="color" id="background-color" value="#222222">
+                </div>
+                <div class="color-picker">
+                    <label for="text-color">Text:</label>
+                    <input type="color" id="text-color" value="#ffffff">
+                </div>
+                <div class="color-picker">
+                    <label for="highlight-color">Highlight:</label>
+                    <input type="color" id="highlight-color" value="#ff5500">
+                </div>
+            </div>
+            
+            <div class="buttons">
+                <button id="save-settings">Save Settings</button>
+                <button id="reset-settings">Reset to Default</button>
+            </div>
+        </div>
+        
+        <button id="toggle-settings" class="settings-toggle">⚙️</button>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

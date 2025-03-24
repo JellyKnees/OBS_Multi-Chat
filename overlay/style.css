@@ -1,0 +1,333 @@
+/* Base styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+/* Inter font import */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
+
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: transparent;
+    color: #ffffff;
+    overflow: hidden;
+    --font-size: 14px;
+    --bg-color: rgba(34, 34, 34, 0.7);
+    --text-color: #ffffff;
+    --highlight-color: #ff5500;
+    --youtube-color: #ff0000;
+    --twitch-color: #9146FF;
+}
+
+.container {
+    width: 100%;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+}
+
+/* Chat container */
+#chat-container {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100vh - 100px);
+    /* Fade out messages at the top when scrolling */
+    mask-image: linear-gradient(to bottom, transparent 0%, black 20px);
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 20px);
+}
+
+.chat-message {
+    margin-bottom: 8px;
+    padding: 8px 10px;
+    border-radius: 4px;
+    background-color: var(--bg-color);
+    word-wrap: break-word;
+    animation: fadeIn 0.3s ease-in-out;
+    position: relative;
+    font-size: var(--font-size);
+    max-width: 100%;
+    font-family: 'Inter', sans-serif;
+    color: var(--text-color);
+}
+
+.chat-message.youtube {
+    border-left: 3px solid var(--youtube-color);
+}
+
+.chat-message.twitch {
+    border-left: 3px solid var(--twitch-color);
+}
+
+.message-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 4px;
+}
+
+.platform-icon {
+    width: 16px;
+    height: 16px;
+    margin-right: 6px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.platform-icon img {
+    max-width: 100%;
+    max-height: 100%;
+}
+
+/* Username styling */
+.username {
+    font-weight: bold !important;
+    margin-right: 8px !important;
+    font-family: 'Inter', sans-serif !important;
+    font-size: 14px !important;
+}
+
+/* Platform-specific username colors - these rules override any inline styles */
+.chat-message.youtube .username {
+    color: var(--youtube-color) !important;
+}
+
+.chat-message.twitch .username {
+    color: var(--twitch-color) !important;
+}
+
+.timestamp {
+    font-size: 0.8em;
+    color: #aaa;
+    margin-left: auto;
+}
+
+.badges {
+    display: flex;
+    align-items: center;
+    margin-right: 6px;
+}
+
+.badge {
+    display: inline-block;
+    width: 18px;
+    height: 18px;
+    margin-right: 4px;
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+}
+
+.message-content {
+    color: #ffffff !important;
+    line-height: 1.4;
+    font-family: 'Inter', sans-serif !important;
+    font-weight: normal !important;
+}
+
+.message-content img, 
+.message-content .emoji {
+    vertical-align: middle;
+    height: 1.2em;
+    margin: 0 0.1em;
+}
+
+/* Highlighted message */
+#highlighted-message-container {
+    padding: 15px;
+    margin: 10px auto;
+    background-color: rgba(40, 40, 40, 0.9);
+    border-radius: 8px;
+    border-left: 5px solid var(--highlight-color);
+    max-width: 80%;
+    display: none;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+    animation: slideIn 0.5s ease-in-out;
+}
+
+#highlighted-message-container .username {
+    font-size: 1.2em;
+}
+
+#highlighted-message-container .message-content {
+    font-size: 1.2em;
+    margin-top: 8px;
+}
+
+/* Settings panel */
+#settings-panel {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background-color: rgba(34, 34, 34, 0.95);
+    border-radius: 8px;
+    padding: 20px;
+    width: 350px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    transition: transform 0.3s ease, opacity 0.3s ease;
+    overflow-y: auto;
+    max-height: 90vh;
+}
+
+#settings-panel.hidden {
+    transform: translateX(400px);
+    opacity: 0;
+    pointer-events: none;
+}
+
+#settings-panel h2 {
+    margin-bottom: 15px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    padding-bottom: 8px;
+}
+
+.setting-group {
+    margin-bottom: 15px;
+}
+
+.setting-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+
+.checkbox-group {
+    margin: 5px 0;
+}
+
+.color-picker {
+    display: flex;
+    align-items: center;
+    margin: 5px 0;
+}
+
+.color-picker label {
+    flex: 1;
+    margin-bottom: 0;
+}
+
+.color-picker input[type="color"] {
+    width: 40px;
+    height: 25px;
+    border: none;
+    border-radius: 4px;
+}
+
+.range-setting {
+    display: flex;
+    align-items: center;
+}
+
+.range-setting input {
+    flex: 1;
+    margin-right: 10px;
+}
+
+.range-setting span {
+    min-width: 40px;
+    text-align: right;
+}
+
+.buttons {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 20px;
+}
+
+button {
+    padding: 8px 15px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: background-color 0.2s;
+}
+
+button:hover {
+    opacity: 0.9;
+}
+
+#save-settings {
+    background-color: #4CAF50;
+    color: white;
+}
+
+#reset-settings {
+    background-color: #f44336;
+    color: white;
+}
+
+.settings-toggle {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: rgba(34, 34, 34, 0.7);
+    border: none;
+    cursor: pointer;
+    font-size: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1001;
+    opacity: 0.5;
+    transition: opacity 0.3s;
+}
+
+.settings-toggle:hover {
+    opacity: 1;
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideIn {
+    from { opacity: 0; transform: translateY(-20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Themes - keep these at the end to override other styles */
+body.light-theme {
+    --bg-color: rgba(240, 240, 240, 0.7);
+    --text-color: #333333;
+}
+
+.light-theme .chat-message {
+    background-color: var(--bg-color);
+}
+
+.light-theme .message-content {
+    color: var(--text-color);
+}
+
+.light-theme .timestamp {
+    color: #777;
+}
+
+.light-theme #settings-panel {
+    background-color: rgba(240, 240, 240, 0.95);
+    color: #333333;
+}
+
+.light-theme .settings-toggle {
+    background-color: rgba(240, 240, 240, 0.7);
+    color: #333333;
+}
+
+/* Custom theme */
+body.custom-theme {
+    --bg-color: var(--custom-bg-color);
+    --text-color: var(--custom-text-color);
+    --highlight-color: var(--custom-highlight-color);
+}

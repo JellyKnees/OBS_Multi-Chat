@@ -1,0 +1,11 @@
+{
+  "theme": "light",
+  "fontSize": 13,
+  "messageLimit": 10,
+  "showBadges": true,
+  "showTimestamps": false,
+  "showPlatforms": true,
+  "backgroundColor": "#222222",
+  "textColor": "#ff0000",
+  "highlightColor": "#ff5500"
+}
