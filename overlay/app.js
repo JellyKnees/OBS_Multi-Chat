@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // Force all styling with inline CSS
+    // Apply custom styling
     const style = document.createElement('style');
     style.textContent = `
         #chat-container {
@@ -10,6 +10,7 @@ document.addEventListener('DOMContentLoaded', () => {
         .chat-message {
             cursor: pointer !important; 
             text-shadow: 1px 1px 2px rgba(0,0,0,0.8) !important;
+            margin-bottom: 8px !important;
         }
         .youtube .username {
             color: #ff0000 !important;
@@ -27,7 +28,6 @@ document.addEventListener('DOMContentLoaded', () => {
             color: white !important;
             font-family: 'Inter', sans-serif !important;
             font-size: 18px !important;
-            /* Fix for long unbroken text */
             word-wrap: break-word !important;
             overflow-wrap: break-word !important;
             word-break: break-word !important;
@@ -37,124 +37,89 @@ document.addEventListener('DOMContentLoaded', () => {
             text-decoration: none !important;
             pointer-events: none !important;
         }
+        .platform-icon {
+            width: 16px !important;
+            height: 16px !important;
+            margin-right: 6px !important;
+            display: inline-block !important;
+            vertical-align: middle !important;
+            background-size: contain !important;
+            background-repeat: no-repeat !important;
+            background-position: center !important;
+        }
+        .youtube .platform-icon {
+            background-image: url('https://www.youtube.com/favicon.ico') !important;
+        }
+        .twitch .platform-icon {
+            background-image: url('https://www.twitch.tv/favicon.ico') !important;
+        }
         #settings-panel, #toggle-settings {
             display: none !important;
         }
     `;
     document.head.appendChild(style);
 
-    // Get DOM elements
+    // Get elements
     const chatContainer = document.getElementById('chat-container');
-    const highlightedContainer = document.getElementById('highlighted-message-container');
     
-    // Socket connection
+    // Track manual scrolling
+    let userScrolled = false;
+    
+    // Create Socket.io connection
     const socket = io();
     
-    // Platform icons
-    const platformIcons = {
-        youtube: '🔴',
-        twitch: '💜',
-        test: '🔧'
-    };
-    
-    // Message cache
-    let chatMessages = [];
-    
-    // Create a reliable auto-scroll function
-    function scrollToBottom() {
-        // Use setTimeout to ensure the DOM has updated
-        setTimeout(() => {
-            chatContainer.scrollTop = chatContainer.scrollHeight;
-        }, 0);
-    }
-    
-    // Handle incoming messages
+    // Handle chat messages
     socket.on('chat-message', (message) => {
-        chatMessages.push(message);
-        addMessage(message);
-        
-        // Auto-scroll unless user has manually scrolled up
-        const nearBottom = chatContainer.scrollHeight - chatContainer.clientHeight - chatContainer.scrollTop < 50;
-        if (nearBottom) {
-            scrollToBottom();
-        }
+        addChatMessage(message);
     });
     
-    // Handle chat history
-    socket.on('chat-history', (messages) => {
-        chatContainer.innerHTML = '';
-        chatMessages = messages;
-        messages.forEach(msg => addMessage(msg, false)); // Don't scroll for each history message
-        scrollToBottom(); // Scroll once at the end
-    });
-    
-    // Handle highlighted message
-    socket.on('highlight-message', (message) => {
-        showHighlighted(message);
-    });
-    
-    // Handle clearing highlighted message
-    socket.on('clear-highlight', () => {
-        highlightedContainer.style.display = 'none';
-    });
-    
-    // Add message to display
-    function addMessage(message, scroll = true) {
-        const msgElement = document.createElement('div');
-        msgElement.classList.add('chat-message');
-        msgElement.classList.add(message.platform.toLowerCase());
-        msgElement.dataset.id = message.id;
-        
-        // Sanitize message content to handle emojis better
-        const sanitizedContent = message.content || '';
-        
-        msgElement.innerHTML = `
-            <div class="message-header">
-                <span class="platform-icon">${platformIcons[message.platform.toLowerCase()] || '❓'}</span>
-                <span class="username">${message.username}</span>
-            </div>
-            <div class="message-content">${sanitizedContent}</div>
-        `;
-        
-        chatContainer.appendChild(msgElement);
-        
-        // Only scroll if requested (and not as part of loading history)
-        if (scroll) {
-            scrollToBottom();
-        }
-    }
-    
-    // Show highlighted message
-    function showHighlighted(message) {
-        highlightedContainer.style.display = 'block';
-        highlightedContainer.className = message.platform.toLowerCase();
-        
-        const sanitizedContent = message.content || '';
-        
-        highlightedContainer.innerHTML = `
-            <div class="message-header">
-                <span class="platform-icon">${platformIcons[message.platform.toLowerCase()] || '❓'}</span>
-                <span class="username">${message.username}</span>
-            </div>
-            <div class="message-content">${sanitizedContent}</div>
-        `;
-        
-        highlightedContainer.addEventListener('click', () => {
-            socket.emit('clear-highlight');
-        });
-    }
-    
-    // Click on message to highlight
-    chatContainer.addEventListener('click', (event) => {
-        const msgElement = event.target.closest('.chat-message');
-        if (msgElement && msgElement.dataset.id) {
-            const messageId = msgElement.dataset.id;
-            socket.emit('highlight-message', messageId);
-        }
-    });
-    
-    // Manual scroll detection
+    // Track scroll position
     chatContainer.addEventListener('scroll', () => {
-        // Nothing specific needed here, auto-scroll is handled when messages arrive
+        const scrollBottom = chatContainer.scrollHeight - chatContainer.clientHeight;
+        const isAtBottom = scrollBottom - chatContainer.scrollTop < 30;
+        userScrolled = !isAtBottom;
     });
+    
+    // Function to add a chat message
+    function addChatMessage(message) {
+        const messageElement = document.createElement('div');
+        messageElement.classList.add('chat-message');
+        messageElement.classList.add(message.platform.toLowerCase());
+        messageElement.dataset.id = message.id;
+        
+        // Create badges HTML
+        let badgesHtml = '';
+        if (message.badges && message.badges.length > 0) {
+            badgesHtml = '<div class="badges">';
+            badgesHtml += message.badges.map(badge => 
+                `<span class="badge" style="background-image: url('${badge}')"></span>`
+            ).join('');
+            badgesHtml += '</div>';
+        }
+        
+        // Create message content
+        messageElement.innerHTML = `
+            <div class="message-header">
+                <span class="platform-icon"></span>
+                <span class="username">${message.username}</span>
+                ${badgesHtml}
+            </div>
+            <div class="message-content">${message.content}</div>
+        `;
+        
+        // Add click event to highlight message
+        messageElement.addEventListener('click', () => {
+            socket.emit('highlight-message', message.id);
+        });
+        
+        // Add to chat container
+        chatContainer.appendChild(messageElement);
+        
+        // Auto-scroll if not manually scrolled up
+        if (!userScrolled) {
+            setTimeout(() => {
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            }, 0);
+        }
+    }
 });

@@ -165,7 +165,7 @@ highlightIo.on('connection', (socket) => {
   });
 });
 
-// Main chat routes
+// Main chat route - inline HTML with styling
 app.get('/', (req, res) => {
   res.send(`<!DOCTYPE html>
 <html lang="en">
@@ -211,7 +211,7 @@ app.get('/', (req, res) => {
             font-family: 'Inter', sans-serif;
             color: var(--text-color);
             cursor: pointer;
-            text-shadow: 2px 2px 0px rgba(0,0,0,0.5);
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
         }
         
         .youtube {
@@ -235,6 +235,7 @@ app.get('/', (req, res) => {
             display: inline-flex;
             align-items: center;
             justify-content: center;
+            vertical-align: middle;
         }
         
         .youtube .username {
@@ -256,6 +257,9 @@ app.get('/', (req, res) => {
             font-family: 'Inter', sans-serif !important;
             font-size: 18px !important;
             line-height: 1.5;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            word-break: break-word;
         }
         
         .message-content a {
@@ -281,15 +285,8 @@ app.get('/', (req, res) => {
             // Get chat container
             const chatContainer = document.getElementById('chat-container');
             
-            // Platform icons
-            const platformIcons = {
-                youtube: '🔴',
-                twitch: '💜',
-                test: '🔧'
-            };
-            
             // Auto-scroll flag
-            let autoScroll = true;
+            let userScrolled = false;
             
             // Socket connection
             const socket = io();
@@ -298,16 +295,19 @@ app.get('/', (req, res) => {
             socket.on('chat-message', (message) => {
                 addMessage(message);
                 
-                // Auto-scroll if needed
-                if (autoScroll) {
-                    chatContainer.scrollTop = chatContainer.scrollHeight;
+                // Auto-scroll if not manually scrolled up
+                if (!userScrolled) {
+                    setTimeout(() => {
+                        chatContainer.scrollTop = chatContainer.scrollHeight;
+                    }, 0);
                 }
             });
             
             // Handle scroll
             chatContainer.addEventListener('scroll', () => {
-                const isAtBottom = chatContainer.scrollHeight - chatContainer.clientHeight <= chatContainer.scrollTop + 30;
-                autoScroll = isAtBottom;
+                const scrollBottom = chatContainer.scrollHeight - chatContainer.clientHeight;
+                const isAtBottom = scrollBottom - chatContainer.scrollTop < 30;
+                userScrolled = !isAtBottom;
             });
             
             // Add message to chat
@@ -317,8 +317,13 @@ app.get('/', (req, res) => {
                 messageElement.classList.add(message.platform.toLowerCase());
                 messageElement.dataset.id = message.id;
                 
-                // Create platform icon
-                const icon = platformIcons[message.platform.toLowerCase()] || '❓';
+                // Create platform icon as SVG
+                let iconHtml = '';
+                if (message.platform.toLowerCase() === 'youtube') {
+                    iconHtml = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" fill="#FF0000"/></svg>';
+                } else if (message.platform.toLowerCase() === 'twitch') {
+                    iconHtml = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M11.571 4.714h1.715v5.143H11.57v-5.143zm4.715 0H18v5.143h-1.714v-5.143zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0H6zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714v9.429z" fill="#9146FF"/></svg>';
+                }
                 
                 // Create badges HTML
                 let badgesHtml = '';
@@ -333,11 +338,11 @@ app.get('/', (req, res) => {
                 // Format message content
                 messageElement.innerHTML = \`
                     <div class="message-header">
-                        <span class="platform-icon">\${icon}</span>
+                        <span class="platform-icon">\${iconHtml}</span>
                         <span class="username">\${message.username}</span>
                         \${badgesHtml}
                     </div>
-                    <div class="message-content">\${message.content || ''}</div>
+                    <div class="message-content">\${message.content}</div>
                 \`;
                 
                 // Click to highlight message
@@ -360,20 +365,31 @@ app.get('/', (req, res) => {
 </html>`);
 });
 
-// Settings endpoint
+// Settings endpoint for getting settings
 app.get('/settings', (req, res) => {
+  console.log('Settings requested from:', req.ip);
   res.json(settings);
 });
 
-// Save settings endpoint
+// Settings endpoint for saving settings
 app.post('/settings', (req, res) => {
+  console.log('Settings update received:', req.body);
+  
+  // Validate settings
   if (!req.body || typeof req.body !== 'object') {
+    console.error('Invalid settings object');
     return res.status(400).json({ success: false, error: 'Invalid settings object' });
   }
   
+  // Update settings
   settings = { ...settings, ...req.body };
+  
+  // Save to file
   saveSettings();
+  
+  // Notify clients of settings change
   io.emit('settings-updated', settings);
+  console.log('Settings updated and broadcasted to clients');
   
   res.json({ success: true });
 });
@@ -413,7 +429,7 @@ highlightApp.get('/', (req, res) => {
             cursor: pointer;
             min-width: 200px;
             max-width: 80%;
-            text-align: center;
+            text-align: left;
             align-self: flex-end;
         }
         
@@ -421,33 +437,38 @@ highlightApp.get('/', (req, res) => {
             color: #ff0000 !important;
             font-family: 'Inter', sans-serif !important;
             font-weight: bold !important;
-            font-size: 22px !important;
+            font-size: 20px !important;
+            display: inline !important;
         }
         
         .twitch .username {
             color: #9146FF !important;
             font-family: 'Inter', sans-serif !important;
             font-weight: bold !important;
-            font-size: 22px !important;
-        }
-        
-        .message-header {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-bottom: 12px;
+            font-size: 20px !important;
+            display: inline !important;
         }
         
         .platform-icon {
-            margin-right: 10px;
-            font-size: 24px;
+            margin-right: 5px;
+            vertical-align: middle;
+        }
+        
+        svg.platform-icon {
+            display: inline;
+            vertical-align: middle;
         }
         
         .message-content {
             color: white !important;
             font-family: 'Inter', sans-serif !important;
-            font-size: 18px !important;
+            font-size: 20px !important;
             line-height: 1.5;
+            display: inline !important;
+            /* Fix for long unbroken text */
+            word-wrap: break-word !important;
+            overflow-wrap: break-word !important;
+            word-break: break-word !important;
         }
         
         /* Make hyperlinks look like normal text */
@@ -475,39 +496,33 @@ highlightApp.get('/', (req, res) => {
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
-        // Platform icons
-        const platformIcons = {
-            youtube: '🔴',
-            twitch: '💜',
-            test: '🔧'
-        };
-        
         // Get the highlighted message container
         const highlightedContainer = document.getElementById('highlighted-message');
         
         // Connect to Socket.IO
         const socket = io();
         
-        // Log connection status
-        socket.on('connect', () => {
-            console.log('Connected to highlight server');
-        });
-        
         // Handle highlighted messages
         socket.on('highlight-message', (message) => {
             console.log('Received highlighted message:', message);
             
-            // Set platform class
-            highlightedContainer.className = '';
-            highlightedContainer.classList.add(message.platform.toLowerCase());
+            // Apply platform class
+            highlightedContainer.className = message.platform.toLowerCase();
             
-            // Create message HTML
+            // Create message HTML with SVG icons
+            let iconHtml = '';
+            if (message.platform.toLowerCase() === 'youtube') {
+                iconHtml = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="platform-icon"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" fill="#FF0000"/></svg>';
+            } else if (message.platform.toLowerCase() === 'twitch') {
+                iconHtml = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="platform-icon"><path d="M11.571 4.714h1.715v5.143H11.57v-5.143zm4.715 0H18v5.143h-1.714v-5.143zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0H6zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714v9.429z" fill="#9146FF"/></svg>';
+            }
+            
             highlightedContainer.innerHTML = \`
-                <div class="message-header">
-                    <span class="platform-icon">\${platformIcons[message.platform.toLowerCase()] || '❓'}</span>
-                    <span class="username">\${message.username}</span>
+                <div class="message-content">
+                    \${iconHtml}
+                    <span class="username">\${message.username}</span>: 
+                    \${message.content || ''}
                 </div>
-                <div class="message-content">\${message.content || ''}</div>
             \`;
             
             // Apply slide-in animation and show
