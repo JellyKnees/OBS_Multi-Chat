@@ -53,6 +53,25 @@ document.addEventListener('DOMContentLoaded', () => {
         .twitch .platform-icon {
             background-image: url('https://www.twitch.tv/favicon.ico') !important;
         }
+        .message-content img, 
+        .message-content span[role="img"],
+        .message-content .emoji,
+        .message-content em img,
+        .message-content em span {
+            vertical-align: middle !important;
+            height: 1.2em !important;
+            width: auto !important;
+            max-height: 1.2em !important;
+            max-width: 1.5em !important;
+            margin: 0 0.1em !important;
+            display: inline-flex !important;
+            font-size: inherit !important;
+        }
+        
+        img.emoji {
+            height: 1.2em !important;
+            width: auto !important;
+        }
         #settings-panel, #toggle-settings {
             display: none !important;
         }
@@ -73,12 +92,31 @@ document.addEventListener('DOMContentLoaded', () => {
         addChatMessage(message);
     });
     
-    // Track scroll position
+    // Track scroll position more accurately
     chatContainer.addEventListener('scroll', () => {
         const scrollBottom = chatContainer.scrollHeight - chatContainer.clientHeight;
-        const isAtBottom = scrollBottom - chatContainer.scrollTop < 30;
-        userScrolled = !isAtBottom;
+        // Consider the user as "not scrolled" if they're close to the bottom
+        userScrolled = scrollBottom - chatContainer.scrollTop > 30;
     });
+    
+    // Improved scroll to bottom function
+    function scrollToBottom() {
+        // Force a layout calculation
+        chatContainer.offsetHeight;
+        
+        // First scroll attempt
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+        
+        // Multiple delayed attempts to ensure all content renders
+        const scrollAttempts = [10, 50, 100, 300];
+        scrollAttempts.forEach(delay => {
+            setTimeout(() => {
+                if (!userScrolled) {
+                    chatContainer.scrollTop = chatContainer.scrollHeight;
+                }
+            }, delay);
+        });
+    }
     
     // Function to add a chat message
     function addChatMessage(message) {
@@ -113,13 +151,45 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         
         // Add to chat container
-        chatContainer.appendChild(messageElement);
+    chatContainer.appendChild(messageElement);
+    
+    // Keep only the last 50 messages in the DOM
+    const messages = chatContainer.getElementsByClassName('chat-message');
+    while (messages.length > 50) {
+        chatContainer.removeChild(messages[0]);
+    }
+    
+    // Clear chat container if there are more than 50 messages
+    if (messages.length > 50) {
+        // Remove all messages and re-add only the last 50
+        while (chatContainer.firstChild) {
+            chatContainer.removeChild(chatContainer.firstChild);
+        }
+        
+        // Get the last 50 messages from the backend
+        const lastMessages = chatMessages.slice(-50);
+        lastMessages.forEach(msg => addMessage(msg));
+    }
+    
+        
+        // Set up a mutation observer to catch emoji rendering
+        const messageObserver = new MutationObserver(() => {
+            if (!userScrolled) {
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            }
+        });
+        
+        // Observe the message element for changes
+        messageObserver.observe(messageElement, {
+            subtree: true,
+            childList: true,
+            characterData: true,
+            attributes: true
+        });
         
         // Auto-scroll if not manually scrolled up
         if (!userScrolled) {
-            setTimeout(() => {
-                chatContainer.scrollTop = chatContainer.scrollHeight;
-            }, 0);
+            scrollToBottom();
         }
     }
 });

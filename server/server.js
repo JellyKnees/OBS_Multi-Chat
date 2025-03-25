@@ -85,7 +85,10 @@ function saveSettings() {
 io.on('connection', (socket) => {
   console.log('Client connected to main chat:', socket.id);
   
-  // Don't send existing message history - only new messages will be shown
+  // Send only the last 50 messages to new clients
+  if (chatMessages.length > 0) {
+    socket.emit('chat-history', chatMessages.slice(-50));
+  }
   
   // Handle new chat messages
   socket.on('chat-message', (message) => {
@@ -268,6 +271,27 @@ app.get('/', (req, res) => {
             pointer-events: none !important;
         }
         
+        /* New emoji fixes */
+        .message-content img, 
+        .message-content span[role="img"],
+        .message-content .emoji,
+        .message-content em img,
+        .message-content em span {
+            vertical-align: middle !important;
+            height: 1.2em !important;
+            width: auto !important;
+            max-height: 1.2em !important;
+            max-width: 1.5em !important;
+            margin: 0 0.1em !important;
+            display: inline-flex !important;
+            font-size: inherit !important;
+        }
+        
+        img.emoji {
+            height: 1.2em !important;
+            width: auto !important;
+        }
+        
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
@@ -294,21 +318,46 @@ app.get('/', (req, res) => {
             // Handle new chat messages
             socket.on('chat-message', (message) => {
                 addMessage(message);
-                
-                // Auto-scroll if not manually scrolled up
-                if (!userScrolled) {
-                    setTimeout(() => {
-                        chatContainer.scrollTop = chatContainer.scrollHeight;
-                    }, 0);
-                }
             });
             
-            // Handle scroll
+            // Add chat history handling
+            socket.on('chat-history', (messages) => {
+                // Clear any existing messages first
+                while (chatContainer.firstChild) {
+                    chatContainer.removeChild(chatContainer.firstChild);
+                }
+                
+                // Add each message from history
+                messages.forEach(message => {
+                    addMessage(message);
+                });
+            });
+            
+            // Handle scroll with fixed logic
             chatContainer.addEventListener('scroll', () => {
                 const scrollBottom = chatContainer.scrollHeight - chatContainer.clientHeight;
-                const isAtBottom = scrollBottom - chatContainer.scrollTop < 30;
-                userScrolled = !isAtBottom;
+                // The user is not considered scrolled away if they're at or near the bottom
+                userScrolled = scrollBottom - chatContainer.scrollTop > 30;
             });
+            
+            // Improved scroll to bottom function
+            function scrollToBottom() {
+                // Force a layout calculation
+                chatContainer.offsetHeight;
+                
+                // First scroll attempt
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+                
+                // Multiple delayed attempts to ensure all content renders
+                const scrollAttempts = [10, 50, 100, 300];
+                scrollAttempts.forEach(delay => {
+                    setTimeout(() => {
+                        if (!userScrolled) {
+                            chatContainer.scrollTop = chatContainer.scrollHeight;
+                        }
+                    }, delay);
+                });
+            }
             
             // Add message to chat
             function addMessage(message) {
@@ -357,6 +406,26 @@ app.get('/', (req, res) => {
                 const messages = chatContainer.getElementsByClassName('chat-message');
                 while (messages.length > 50) {
                     chatContainer.removeChild(messages[0]);
+                }
+                
+                // Set up a mutation observer to catch emoji rendering
+                const messageObserver = new MutationObserver(() => {
+                    if (!userScrolled) {
+                        chatContainer.scrollTop = chatContainer.scrollHeight;
+                    }
+                });
+                
+                // Observe the message element for changes
+                messageObserver.observe(messageElement, {
+                    subtree: true,
+                    childList: true,
+                    characterData: true,
+                    attributes: true
+                });
+                
+                // Auto-scroll if not manually scrolled up
+                if (!userScrolled) {
+                    scrollToBottom();
                 }
             }
         });
@@ -476,6 +545,27 @@ highlightApp.get('/', (req, res) => {
             color: white !important;
             text-decoration: none !important;
             pointer-events: none !important;
+        }
+        
+        /* New emoji fixes */
+        .message-content img, 
+        .message-content span[role="img"],
+        .message-content .emoji,
+        .message-content em img,
+        .message-content em span {
+            vertical-align: middle !important;
+            height: 1.2em !important;
+            width: auto !important;
+            max-height: 1.2em !important;
+            max-width: 1.5em !important;
+            margin: 0 0.1em !important;
+            display: inline-flex !important;
+            font-size: inherit !important;
+        }
+        
+        img.emoji {
+            height: 1.2em !important;
+            width: auto !important;
         }
         
         @keyframes slideInFromRight {
