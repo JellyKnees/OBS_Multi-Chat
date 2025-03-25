@@ -47,6 +47,15 @@ let settings = {
   // Functional customization
   messageLimit: 50,
   highlightTimeout: 10000, // milliseconds
+  
+  // Additional customization
+  enableDropShadow: true,
+  theme: "dark",
+  showBadges: true,
+  showTimestamps: false,
+  showPlatforms: true,
+  backgroundColor: "#222222",
+  highlightColor: "#ff5500"
 };
 
 // Load settings from file if exists
@@ -114,7 +123,8 @@ chatIo.on('connection', (socket) => {
     const message = chatMessages.find(msg => msg.id === messageId);
     
     if (message) {
-      // Send to highlight server via socket.io-client
+      // When sending to highlight server, only send the highlightTimeout setting
+      // We don't want to override other highlight server settings
       highlightSocket.emit('highlight-message', message);
       console.log('Message sent to highlight server');
     } else {
@@ -134,11 +144,13 @@ chatIo.on('connection', (socket) => {
     settings = { ...settings, ...newSettings };
     console.log('Received settings update:', settings);
     
-    // Broadcast to all clients
+    // Broadcast all settings to main chat clients
     chatIo.emit('settings-updated', settings);
     
-    // Forward to highlight server
-    highlightSocket.emit('settings-updated', settings);
+    // Forward ONLY the highlightTimeout to highlight server
+    highlightSocket.emit('settings-updated', { 
+      highlightTimeout: settings.highlightTimeout 
+    });
   });
   
   // Handle disconnection
@@ -149,6 +161,11 @@ chatIo.on('connection', (socket) => {
 
 // Main chat HTML route with dynamic settings included
 app.get('/', (req, res) => {
+  // Determine text shadow based on enableDropShadow setting
+  const textShadow = settings.enableDropShadow 
+    ? 'text-shadow: 1px 1px 2px rgba(0,0,0,0.8);' 
+    : 'text-shadow: none;';
+  
   res.send(`<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -170,6 +187,8 @@ app.get('/', (req, res) => {
             overflow: hidden;
             --font-size: ${settings.fontSize}px;
             --text-color: ${settings.textColor};
+            --bg-color: ${settings.backgroundColor};
+            --highlight-color: ${settings.highlightColor};
         }
         
         #chat-container {
@@ -184,7 +203,9 @@ app.get('/', (req, res) => {
             margin-bottom: 8px;
             padding: 8px 10px;
             border-radius: 4px;
-            background-color: rgba(34, 34, 34, 0.7);
+            background-color: rgba(${parseInt(settings.backgroundColor.slice(1, 3), 16)}, 
+                                  ${parseInt(settings.backgroundColor.slice(3, 5), 16)}, 
+                                  ${parseInt(settings.backgroundColor.slice(5, 7), 16)}, 0.7);
             word-wrap: break-word;
             animation: fadeIn 0.3s ease-in-out;
             position: relative;
@@ -193,7 +214,7 @@ app.get('/', (req, res) => {
             font-family: 'Inter', sans-serif;
             color: var(--text-color);
             cursor: pointer;
-            text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+            ${textShadow}
         }
         
         .youtube {
@@ -214,7 +235,7 @@ app.get('/', (req, res) => {
             width: 16px;
             height: 16px;
             margin-right: 6px;
-            display: inline-flex;
+            display: ${settings.showPlatforms ? 'inline-flex' : 'none'};
             align-items: center;
             justify-content: center;
             vertical-align: middle;
@@ -224,14 +245,14 @@ app.get('/', (req, res) => {
             color: #ff0000 !important;
             font-family: 'Inter', sans-serif !important;
             font-weight: bold !important;
-            font-size: 18px !important;
+            font-size: ${settings.fontSize + 2}px !important;
         }
         
         .twitch .username {
             color: #9146FF !important;
             font-family: 'Inter', sans-serif !important;
             font-weight: bold !important;
-            font-size: 18px !important;
+            font-size: ${settings.fontSize + 2}px !important;
         }
         
         .message-content {
@@ -242,6 +263,19 @@ app.get('/', (req, res) => {
             word-wrap: break-word;
             overflow-wrap: break-word;
             word-break: break-word;
+        }
+        
+        .badges {
+            display: ${settings.showBadges ? 'flex' : 'none'};
+            align-items: center;
+            margin-right: 6px;
+        }
+        
+        .timestamp {
+            font-size: 0.8em;
+            color: #aaa;
+            margin-left: auto;
+            display: ${settings.showTimestamps ? 'inline-block' : 'none'};
         }
         
         .message-content a {
@@ -275,9 +309,26 @@ app.get('/', (req, res) => {
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
         }
+        
+        /* Apply theme-specific styles */
+        body.light-theme {
+            --bg-color: rgba(240, 240, 240, 0.7);
+            --text-color: #333333;
+        }
+        
+        body.dark-theme {
+            --bg-color: rgba(34, 34, 34, 0.7);
+            --text-color: #ffffff;
+        }
+        
+        body.custom-theme {
+            --bg-color: var(--custom-bg-color);
+            --text-color: var(--custom-text-color);
+            --highlight-color: var(--custom-highlight-color);
+        }
     </style>
 </head>
-<body>
+<body class="${settings.theme}-theme">
     <div id="chat-container">
         <!-- Chat messages will be added here -->
     </div>
@@ -300,17 +351,53 @@ app.get('/', (req, res) => {
                 applySettings(newSettings);
             });
             
-            // Apply settings
+            // Apply settings to chat
             function applySettings(settings) {
+                // Update document class for theme
+                document.body.className = settings.theme + '-theme';
+                
                 // Update font size
                 document.documentElement.style.setProperty('--font-size', \`\${settings.fontSize}px\`);
                 
                 // Update text color
                 document.documentElement.style.setProperty('--text-color', settings.textColor);
                 
+                // Update background color
+                document.documentElement.style.setProperty('--bg-color', \`rgba(\${parseInt(settings.backgroundColor.slice(1, 3), 16)}, 
+                                                                        \${parseInt(settings.backgroundColor.slice(3, 5), 16)}, 
+                                                                        \${parseInt(settings.backgroundColor.slice(5, 7), 16)}, 0.7)\`);
+                
+                // Update highlight color
+                document.documentElement.style.setProperty('--highlight-color', settings.highlightColor);
+                
                 // Update chat dimensions
                 chatContainer.style.width = settings.chatWidth;
                 chatContainer.style.height = settings.chatHeight;
+                
+                // Update text shadow based on enableDropShadow setting
+                const textShadow = settings.enableDropShadow ? '1px 1px 2px rgba(0,0,0,0.8)' : 'none';
+                const messages = document.querySelectorAll('.chat-message');
+                messages.forEach(msg => {
+                    msg.style.textShadow = textShadow;
+                });
+                
+                // Update badges visibility
+                const badges = document.querySelectorAll('.badges');
+                badges.forEach(badge => {
+                    badge.style.display = settings.showBadges ? 'flex' : 'none';
+                });
+                
+                // Update timestamps visibility
+                const timestamps = document.querySelectorAll('.timestamp');
+                timestamps.forEach(timestamp => {
+                    timestamp.style.display = settings.showTimestamps ? 'inline-block' : 'none';
+                });
+                
+                // Update platform icons visibility
+                const platformIcons = document.querySelectorAll('.platform-icon');
+                platformIcons.forEach(icon => {
+                    icon.style.display = settings.showPlatforms ? 'inline-flex' : 'none';
+                });
             }
             
             // Handle new chat messages
@@ -364,6 +451,11 @@ app.get('/', (req, res) => {
                 messageElement.classList.add(message.platform.toLowerCase());
                 messageElement.dataset.id = message.id;
                 
+                // Apply text shadow based on current settings
+                if (!document.body.hasAttribute('data-drop-shadow-applied')) {
+                    messageElement.style.textShadow = ${settings.enableDropShadow} ? '1px 1px 2px rgba(0,0,0,0.8)' : 'none';
+                }
+                
                 // Create platform icon as SVG
                 let iconHtml = '';
                 if (message.platform.toLowerCase() === 'youtube') {
@@ -382,12 +474,20 @@ app.get('/', (req, res) => {
                     badgesHtml += '</div>';
                 }
                 
+                // Create timestamp HTML
+                let timestampHtml = '';
+                if (message.timestamp) {
+                    const timestamp = typeof message.timestamp === 'string' ? message.timestamp : new Date(message.timestamp).toLocaleTimeString();
+                    timestampHtml = \`<span class="timestamp">\${timestamp}</span>\`;
+                }
+                
                 // Format message content
                 messageElement.innerHTML = \`
                     <div class="message-header">
                         <span class="platform-icon">\${iconHtml}</span>
                         <span class="username">\${message.username}</span>
                         \${badgesHtml}
+                        \${timestampHtml}
                     </div>
                     <div class="message-content">\${message.content}</div>
                 \`;
@@ -462,7 +562,12 @@ app.post('/settings', (req, res) => {
   
   // Notify clients of settings change
   chatIo.emit('settings-updated', settings);
-  highlightSocket.emit('settings-updated', settings);
+  
+  // Only send highlight timeout to highlight server
+  highlightSocket.emit('settings-updated', { 
+    highlightTimeout: settings.highlightTimeout 
+  });
+  
   console.log('Settings updated and broadcasted to clients');
   
   res.json({ success: true });

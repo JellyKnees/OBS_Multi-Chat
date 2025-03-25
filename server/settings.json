@@ -10,5 +10,6 @@
   "showTimestamps": false,
   "showPlatforms": true,
   "backgroundColor": "#222222",
-  "highlightColor": "#ff5500"
+  "highlightColor": "#ff5500",
+  "enableDropShadow": true
 }
