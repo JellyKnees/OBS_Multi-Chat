@@ -1,11 +1,14 @@
 {
-  "theme": "light",
   "fontSize": 13,
-  "messageLimit": 10,
+  "textColor": "#ffffff",
+  "chatWidth": "100%",
+  "chatHeight": "400px",
+  "messageLimit": 50,
+  "highlightTimeout": 10000,
+  "theme": "light",
   "showBadges": true,
   "showTimestamps": false,
   "showPlatforms": true,
   "backgroundColor": "#222222",
-  "textColor": "#ffffff",
   "highlightColor": "#ff5500"
 }
