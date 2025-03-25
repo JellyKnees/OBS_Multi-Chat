@@ -329,18 +329,29 @@ function clearHighlightMessage() {
   console.log('Highlight cleared');
 }
 
-// Start server
-const PORT = process.env.PORT || 3001;
-server.listen(PORT, () => {
-  console.log(`Highlight server running on http://localhost:${PORT}`);
-});
-
-module.exports = {
+// Export module functions and objects
+const highlightServer = {
   io,
   settings,
   clearHighlightMessage,
   highlightMessage: (message) => {
     highlightedMessage = message;
     io.emit('highlight-message', message);
+  },
+  startServer: () => {
+    const PORT = process.env.PORT || 3001;
+    return server.listen(PORT, () => {
+      console.log(`Highlight server running on http://localhost:${PORT}`);
+    });
   }
 };
+
+// Only start the server if this file is run directly
+if (require.main === module) {
+  const PORT = process.env.PORT || 3001;
+  server.listen(PORT, () => {
+    console.log(`Highlight server running on http://localhost:${PORT}`);
+  });
+}
+
+module.exports = highlightServer;

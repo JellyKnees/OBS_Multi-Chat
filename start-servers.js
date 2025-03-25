@@ -42,13 +42,18 @@ function startServer(script, name, color) {
   return server;
 }
 
-// Start all servers
-const mainServer = startServer('server.js', 'Main Chat', colors.main);
+// Start highlight server first - this must be a separate process
 const highlightServer = startServer('highlight-server.js', 'Highlight Messages', colors.highlight);
-const customizationServer = startServer('customization-server.js', 'Customization Dashboard', colors.dashboard);
 
-// Display URLs for access
-console.log(`
+// Wait a moment for highlight server to initialize
+setTimeout(() => {
+  // Start main server
+  const mainServer = startServer('server.js', 'Main Chat', colors.main);
+  // Start customization server
+  const customizationServer = startServer('customization-server.js', 'Customization Dashboard', colors.dashboard);
+  
+  // Display URLs for access
+  console.log(`
 ${colors.info}==========================================================
   Multi-Platform Chat Overlay
 ==========================================================
@@ -63,17 +68,18 @@ ${colors.info}==========================================================
 ==========================================================${colors.reset}
 `);
 
-// Handle graceful shutdown
-process.on('SIGINT', () => {
-  console.log(`\n${colors.info}Shutting down all servers...${colors.reset}`);
-  
-  mainServer.kill();
-  highlightServer.kill();
-  customizationServer.kill();
-  
-  console.log(`${colors.info}All servers have been stopped.${colors.reset}`);
-  process.exit(0);
-});
+  // Handle graceful shutdown
+  process.on('SIGINT', () => {
+    console.log(`\n${colors.info}Shutting down all servers...${colors.reset}`);
+    
+    mainServer.kill();
+    highlightServer.kill();
+    customizationServer.kill();
+    
+    console.log(`${colors.info}All servers have been stopped.${colors.reset}`);
+    process.exit(0);
+  });
+}, 2000);
 
 // Create interface for user input if needed
 const rl = readline.createInterface({

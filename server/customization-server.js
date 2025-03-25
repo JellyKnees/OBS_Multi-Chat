@@ -4,6 +4,7 @@ const socketIo = require('socket.io');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
+const io = require('socket.io-client');
 
 // Initialize Express app for customization dashboard
 const app = express();
@@ -15,13 +16,17 @@ app.use(express.static(path.join(__dirname, '../customization')));
 const server = http.createServer(app);
 
 // Initialize Socket.IO
-const io = socketIo(server, {
+const dashboardIo = socketIo(server, {
   cors: {
     origin: "*",
     methods: ["GET", "POST"],
     credentials: true
   }
 });
+
+// Connect to the other servers as a client
+const mainSocket = io('http://localhost:3000');
+const highlightSocket = io('http://localhost:3001');
 
 // Settings storage
 let settings = {
@@ -53,6 +58,31 @@ try {
 } catch (error) {
   console.error('Error loading settings:', error);
 }
+
+// Connection statuses
+let mainConnected = false;
+let highlightConnected = false;
+
+// Track connection status
+mainSocket.on('connect', () => {
+  console.log('Connected to main server');
+  mainConnected = true;
+});
+
+mainSocket.on('disconnect', () => {
+  console.log('Disconnected from main server');
+  mainConnected = false;
+});
+
+highlightSocket.on('connect', () => {
+  console.log('Connected to highlight server');
+  highlightConnected = true;
+});
+
+highlightSocket.on('disconnect', () => {
+  console.log('Disconnected from highlight server');
+  highlightConnected = false;
+});
 
 // Save settings to file
 function saveSettings() {
@@ -88,20 +118,42 @@ app.post('/api/settings', (req, res) => {
   saveSettings();
   
   // Broadcast settings update to all connected clients
-  io.emit('settings-updated', settings);
+  dashboardIo.emit('settings-updated', settings);
+  
+  // Send to main server
+  if (mainConnected) {
+    mainSocket.emit('settings-updated', settings);
+    console.log('Settings sent to main server');
+  } else {
+    console.warn('Cannot send settings to main server - not connected');
+  }
+  
+  // Send to highlight server
+  if (highlightConnected) {
+    highlightSocket.emit('settings-updated', settings);
+    console.log('Settings sent to highlight server');
+  } else {
+    console.warn('Cannot send settings to highlight server - not connected');
+  }
   
   // Return success response
   res.json({ success: true, settings });
 });
 
 // Socket.IO connection handling
-io.on('connection', (socket) => {
+dashboardIo.on('connection', (socket) => {
   console.log('Client connected to customization server:', socket.id);
   
   // Send current settings to newly connected client
   socket.emit('settings', settings);
   
-  // Handle settings update
+  // Send connection statuses
+  socket.emit('server-status', { 
+    main: mainConnected,
+    highlight: highlightConnected
+  });
+  
+  // Handle settings update from client
   socket.on('update-settings', (newSettings) => {
     // Update settings
     settings = { ...settings, ...newSettings };
@@ -109,8 +161,24 @@ io.on('connection', (socket) => {
     // Save to file
     saveSettings();
     
-    // Broadcast to all clients
-    io.emit('settings-updated', settings);
+    // Broadcast to all dashboard clients
+    dashboardIo.emit('settings-updated', settings);
+    
+    // Send to main server
+    if (mainConnected) {
+      mainSocket.emit('settings-updated', settings);
+      console.log('Settings sent to main server');
+    } else {
+      console.warn('Cannot send settings to main server - not connected');
+    }
+    
+    // Send to highlight server
+    if (highlightConnected) {
+      highlightSocket.emit('settings-updated', settings);
+      console.log('Settings sent to highlight server');
+    } else {
+      console.warn('Cannot send settings to highlight server - not connected');
+    }
   });
   
   // Handle disconnection
@@ -124,5 +192,3 @@ const PORT = process.env.PORT || 3002;
 server.listen(PORT, () => {
   console.log(`Customization dashboard running on http://localhost:${PORT}`);
 });
-
-module.exports = { io, settings };

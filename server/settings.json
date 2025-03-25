@@ -3,7 +3,7 @@
   "textColor": "#ffffff",
   "chatWidth": "100%",
   "chatHeight": "400px",
-  "messageLimit": 50,
+  "messageLimit": 100,
   "highlightTimeout": 10000,
   "theme": "light",
   "showBadges": true,

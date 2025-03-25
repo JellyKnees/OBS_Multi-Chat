@@ -4,6 +4,7 @@ const socketIo = require('socket.io');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
+const io = require('socket.io-client');
 
 // Initialize Express app for main chat
 const app = express();
@@ -15,7 +16,7 @@ app.use(express.static(path.join(__dirname, '../overlay')));
 const server = http.createServer(app);
 
 // Initialize Socket.IO for main chat
-const io = socketIo(server, {
+const chatIo = socketIo(server, {
   cors: {
     origin: "*",
     methods: ["GET", "POST"],
@@ -23,8 +24,14 @@ const io = socketIo(server, {
   }
 });
 
-// Import highlight server functions
-const highlightServer = require('./highlight-server');
+// Connect to highlight server as a client
+const highlightSocket = io('http://localhost:3001');
+highlightSocket.on('connect', () => {
+  console.log('Connected to highlight server');
+});
+highlightSocket.on('connect_error', (error) => {
+  console.error('Error connecting to highlight server:', error.message);
+});
 
 // Chat message storage - limit to message limit from settings
 let chatMessages = [];
@@ -59,7 +66,7 @@ try {
 }
 
 // Socket.IO connection handling for main chat
-io.on('connection', (socket) => {
+chatIo.on('connection', (socket) => {
   console.log('Client connected to main chat:', socket.id);
   
   // Send current settings to client
@@ -96,7 +103,7 @@ io.on('connection', (socket) => {
     }
     
     // Broadcast to all chat clients
-    io.emit('chat-message', message);
+    chatIo.emit('chat-message', message);
   });
 
   // Handle message highlighting - send to highlight server
@@ -107,8 +114,8 @@ io.on('connection', (socket) => {
     const message = chatMessages.find(msg => msg.id === messageId);
     
     if (message) {
-      // Send to highlight server
-      highlightServer.highlightMessage(message);
+      // Send to highlight server via socket.io-client
+      highlightSocket.emit('highlight-message', message);
       console.log('Message sent to highlight server');
     } else {
       console.error('Message not found for highlighting:', messageId);
@@ -118,7 +125,7 @@ io.on('connection', (socket) => {
   // Handle clearing highlighted message
   socket.on('clear-highlight', () => {
     console.log('Clearing highlighted message');
-    highlightServer.clearHighlightMessage();
+    highlightSocket.emit('clear-highlight');
   });
 
   // Handle settings update
@@ -128,10 +135,10 @@ io.on('connection', (socket) => {
     console.log('Received settings update:', settings);
     
     // Broadcast to all clients
-    io.emit('settings-updated', settings);
+    chatIo.emit('settings-updated', settings);
     
     // Forward to highlight server
-    highlightServer.io.emit('settings-updated', settings);
+    highlightSocket.emit('settings-updated', settings);
   });
   
   // Handle disconnection
@@ -454,8 +461,8 @@ app.post('/settings', (req, res) => {
   }
   
   // Notify clients of settings change
-  io.emit('settings-updated', settings);
-  highlightServer.io.emit('settings-updated', settings);
+  chatIo.emit('settings-updated', settings);
+  highlightSocket.emit('settings-updated', settings);
   console.log('Settings updated and broadcasted to clients');
   
   res.json({ success: true });
