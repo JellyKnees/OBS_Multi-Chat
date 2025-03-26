@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OBS Chat Overlay Customization</title>
+    <title>Chat Overlay Customization</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -242,8 +242,75 @@
         .port-card a:hover {
             text-decoration: underline;
         }
+        
+        /* Tab styling */
+        .tabs {
+            display: flex;
+            margin-bottom: 20px;
+        }
+        
+        .tab-button {
+            padding: 10px 15px;
+            background-color: var(--panel-bg);
+            border: none;
+            color: var(--text-color);
+            cursor: pointer;
+            border-radius: 4px 4px 0 0;
+            margin-right: 2px;
+        }
+        
+        .tab-button.active {
+            background-color: var(--primary-color);
+            color: white;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+
+        .checkbox-group {
+            margin: 5px 0;
+        }
+
+        .color-picker {
+            display: flex;
+            align-items: center;
+            margin: 5px 0;
+        }
+
+        .color-picker label {
+            flex: 1;
+            margin-bottom: 0;
+        }
+
+        .color-picker input[type="color"] {
+            width: 40px;
+            height: 25px;
+            border: none;
+            border-radius: 4px;
+        }
+        
+        .range-slider {
+            display: flex;
+            align-items: center;
+            margin-top: 5px;
+        }
+        
+        .range-slider label {
+            width: auto;
+            margin-right: 10px;
+        }
+        
+        .range-slider input[type="range"] {
+            flex: 1;
+        }
     </style>
 </head>
+
 <body>
     <header>
         <h1>OBS Multi-Platform Chat Overlay Customization</h1>
@@ -254,9 +321,14 @@
 
     <div class="ports-info">
         <div class="port-card">
-            <h3>Main Chat</h3>
+            <h3>OBS View</h3>
             <p>Add to OBS as Browser Source</p>
-            <a href="http://localhost:3000" target="_blank">http://localhost:3000</a>
+            <a href="http://localhost:3000/obs-view" target="_blank">http://localhost:3000/obs-view</a>
+        </div>
+        <div class="port-card">
+            <h3>Streamer View</h3>
+            <p>View on your monitor</p>
+            <a href="http://localhost:3000/streamer-view" target="_blank">http://localhost:3000/streamer-view</a>
         </div>
         <div class="port-card">
             <h3>Highlighted Messages</h3>
@@ -270,58 +342,176 @@
         </div>
     </div>
 
-    <div class="dashboard">
-        <div class="preview-section card">
-            <h2>Live Preview</h2>
-            <div class="preview">
-                <div id="preview-chat" class="preview-chat">
-                    <div class="preview-message">
-                        <span class="preview-username youtube">YouTubeUser123:</span>
-                        <span class="preview-content">Hello everyone! How's the stream going?</span>
-                    </div>
-                    <div class="preview-message">
-                        <span class="preview-username twitch">TwitchViewer456:</span>
-                        <span class="preview-content">This game looks awesome!</span>
-                    </div>
+    <div class="tabs">
+        <button class="tab-button active" data-tab="obs-tab">OBS View</button>
+        <button class="tab-button" data-tab="streamer-tab">Streamer View</button>
+        <button class="tab-button" data-tab="common-tab">Common Settings</button>
+    </div>
+
+    <div id="obs-tab" class="tab-content active">
+        <div class="card">
+            <h2>OBS View Customization</h2>
+            <div class="form-group">
+                <label for="obs-fontSize">Font Size</label>
+                <input type="range" id="obs-fontSize" min="12" max="24" step="1" value="16">
+                <span id="obs-fontSizeValue" class="range-value">16px</span>
+            </div>
+            <div class="form-group">
+                <label for="obs-textColor">Text Color</label>
+                <input type="color" id="obs-textColor" value="#ffffff">
+            </div>
+            <div class="form-group">
+                <label for="obs-backgroundColor">Background Color</label>
+                <input type="color" id="obs-backgroundColor" value="#222222">
+            </div>
+            <div class="form-group">
+                <label for="obs-messageBackgroundColor">Message Background</label>
+                <input type="color" id="obs-messageBackgroundColor" value="#222222">
+                <div class="range-slider">
+                    <label for="obs-messageOpacity">Opacity: </label>
+                    <input type="range" id="obs-messageOpacity" min="0" max="1" step="0.1" value="0.7">
+                    <span id="obs-messageOpacityValue" class="range-value">0.7</span>
                 </div>
             </div>
-            <div class="preview-highlight">
-                <span class="preview-username youtube">YouTubeUser123:</span>
-                <span class="preview-content">Hello everyone! How's the stream going?</span>
+            <div class="form-group">
+                <label for="obs-messageBorderRadius">Corner Roundness</label>
+                <input type="range" id="obs-messageBorderRadius" min="0" max="20" step="1" value="4">
+                <span id="obs-messageBorderRadiusValue" class="range-value">4px</span>
+            </div>
+            <div class="form-group">
+                <label for="obs-messagePadding">Message Padding</label>
+                <input type="range" id="obs-messagePadding" min="4" max="20" step="1" value="8">
+                <span id="obs-messagePaddingValue" class="range-value">8px</span>
+            </div>
+            <div class="form-group">
+                <label for="obs-chatWidth">Chat Width</label>
+                <input type="text" id="obs-chatWidth" value="100%">
+            </div>
+            <div class="form-group">
+                <label for="obs-chatHeight">Chat Height</label>
+                <input type="text" id="obs-chatHeight" value="400px">
+            </div>
+            <div class="form-group">
+                <label>Text Shadow:</label>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="obs-enableDropShadow" checked>
+                    <label for="obs-enableDropShadow">Enable Drop Shadow</label>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="obs-theme">Theme:</label>
+                <select id="obs-theme">
+                    <option value="dark">Dark</option>
+                    <option value="light">Light</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Display Options:</label>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="obs-showBadges" checked>
+                    <label for="obs-showBadges">Show Badges</label>
+                </div>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="obs-showTimestamps">
+                    <label for="obs-showTimestamps">Show Timestamps</label>
+                </div>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="obs-showPlatforms" checked>
+                    <label for="obs-showPlatforms">Show Platform Icons</label>
+                </div>
             </div>
         </div>
+    </div>
 
+    <div id="streamer-tab" class="tab-content">
         <div class="card">
-            <h2>Visual Customization</h2>
+            <h2>Streamer View Customization</h2>
             <div class="form-group">
-                <label for="fontSize">Font Size</label>
-                <input type="range" id="fontSize" min="12" max="24" step="1" value="16">
-                <span id="fontSizeValue" class="range-value">16px</span>
+                <label for="streamer-fontSize">Font Size</label>
+                <input type="range" id="streamer-fontSize" min="12" max="24" step="1" value="16">
+                <span id="streamer-fontSizeValue" class="range-value">16px</span>
             </div>
             <div class="form-group">
-                <label for="textColor">Text Color</label>
-                <input type="color" id="textColor" value="#ffffff">
+                <label for="streamer-textColor">Text Color</label>
+                <input type="color" id="streamer-textColor" value="#ffffff">
             </div>
             <div class="form-group">
-                <label for="chatWidth">Chat Width</label>
-                <input type="text" id="chatWidth" value="100%">
+                <label for="streamer-backgroundColor">Background Color</label>
+                <input type="color" id="streamer-backgroundColor" value="#181818">
             </div>
             <div class="form-group">
-                <label for="chatHeight">Chat Height</label>
-                <input type="text" id="chatHeight" value="400px">
+                <label for="streamer-messageBackgroundColor">Message Background</label>
+                <input type="color" id="streamer-messageBackgroundColor" value="#222222">
+                <div class="range-slider">
+                    <label for="streamer-messageOpacity">Opacity: </label>
+                    <input type="range" id="streamer-messageOpacity" min="0" max="1" step="0.1" value="0.7">
+                    <span id="streamer-messageOpacityValue" class="range-value">0.7</span>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="streamer-messageBorderRadius">Corner Roundness</label>
+                <input type="range" id="streamer-messageBorderRadius" min="0" max="20" step="1" value="4">
+                <span id="streamer-messageBorderRadiusValue" class="range-value">4px</span>
+            </div>
+            <div class="form-group">
+                <label for="streamer-messagePadding">Message Padding</label>
+                <input type="range" id="streamer-messagePadding" min="4" max="20" step="1" value="8">
+                <span id="streamer-messagePaddingValue" class="range-value">8px</span>
+            </div>
+            <div class="form-group">
+                <label for="streamer-chatWidth">Chat Width</label>
+                <input type="text" id="streamer-chatWidth" value="100%">
+            </div>
+            <div class="form-group">
+                <label for="streamer-chatHeight">Chat Height</label>
+                <input type="text" id="streamer-chatHeight" value="400px">
+            </div>
+            <div class="form-group">
+                <label>Text Shadow:</label>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="streamer-enableDropShadow" checked>
+                    <label for="streamer-enableDropShadow">Enable Drop Shadow</label>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="streamer-theme">Theme:</label>
+                <select id="streamer-theme">
+                    <option value="dark">Dark</option>
+                    <option value="light">Light</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Display Options:</label>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="streamer-showBadges" checked>
+                    <label for="streamer-showBadges">Show Badges</label>
+                </div>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="streamer-showTimestamps">
+                    <label for="streamer-showTimestamps">Show Timestamps</label>
+                </div>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="streamer-showPlatforms" checked>
+                    <label for="streamer-showPlatforms">Show Platform Icons</label>
+                </div>
             </div>
         </div>
-
+    </div>
+    <div id="common-tab" class="tab-content">
         <div class="card">
-            <h2>Functional Customization</h2>
+            <h2>Common Settings</h2>
             <div class="form-group">
-                <label for="messageLimit">Message Limit</label>
+                <label for="messageLimit">Maximum Messages</label>
                 <input type="number" id="messageLimit" min="10" max="200" value="50">
             </div>
             <div class="form-group">
                 <label for="highlightTimeout">Highlight Timeout (seconds)</label>
                 <input type="range" id="highlightTimeout" min="1" max="30" step="1" value="10">
                 <span id="highlightTimeoutValue" class="range-value">10s</span>
+            </div>
+            <div class="form-group">
+                <label for="highlightColor">Highlight Color</label>
+                <input type="color" id="highlightColor" value="#ff5500">
             </div>
         </div>
     </div>
@@ -338,33 +528,108 @@
     <script src="/socket.io/socket.io.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            // Get DOM elements
-            const fontSizeInput = document.getElementById('fontSize');
-            const fontSizeValue = document.getElementById('fontSizeValue');
-            const textColorInput = document.getElementById('textColor');
-            const chatWidthInput = document.getElementById('chatWidth');
-            const chatHeightInput = document.getElementById('chatHeight');
+            // Get DOM elements - OBS View
+            const obsFontSizeInput = document.getElementById('obs-fontSize');
+            const obsFontSizeValue = document.getElementById('obs-fontSizeValue');
+            const obsTextColorInput = document.getElementById('obs-textColor');
+            const obsBackgroundColorInput = document.getElementById('obs-backgroundColor');
+            const obsChatWidthInput = document.getElementById('obs-chatWidth');
+            const obsChatHeightInput = document.getElementById('obs-chatHeight');
+            const obsEnableDropShadowInput = document.getElementById('obs-enableDropShadow');
+            const obsThemeInput = document.getElementById('obs-theme');
+            const obsShowBadgesInput = document.getElementById('obs-showBadges');
+            const obsShowTimestampsInput = document.getElementById('obs-showTimestamps');
+            const obsShowPlatformsInput = document.getElementById('obs-showPlatforms');
+            const obsMsgBgColorInput = document.getElementById('obs-messageBackgroundColor');
+            const obsMsgOpacityInput = document.getElementById('obs-messageOpacity');
+            const obsMsgOpacityValue = document.getElementById('obs-messageOpacityValue');
+            const obsMsgBorderRadiusInput = document.getElementById('obs-messageBorderRadius');
+            const obsMsgBorderRadiusValue = document.getElementById('obs-messageBorderRadiusValue');
+            const obsMsgPaddingInput = document.getElementById('obs-messagePadding');
+            const obsMsgPaddingValue = document.getElementById('obs-messagePaddingValue');
+            
+            // Get DOM elements - Streamer View
+            const streamerFontSizeInput = document.getElementById('streamer-fontSize');
+            const streamerFontSizeValue = document.getElementById('streamer-fontSizeValue');
+            const streamerTextColorInput = document.getElementById('streamer-textColor');
+            const streamerBackgroundColorInput = document.getElementById('streamer-backgroundColor');
+            const streamerChatWidthInput = document.getElementById('streamer-chatWidth');
+            const streamerChatHeightInput = document.getElementById('streamer-chatHeight');
+            const streamerEnableDropShadowInput = document.getElementById('streamer-enableDropShadow');
+            const streamerThemeInput = document.getElementById('streamer-theme');
+            const streamerShowBadgesInput = document.getElementById('streamer-showBadges');
+            const streamerShowTimestampsInput = document.getElementById('streamer-showTimestamps');
+            const streamerShowPlatformsInput = document.getElementById('streamer-showPlatforms');
+            const streamerMsgBgColorInput = document.getElementById('streamer-messageBackgroundColor');
+            const streamerMsgOpacityInput = document.getElementById('streamer-messageOpacity');
+            const streamerMsgOpacityValue = document.getElementById('streamer-messageOpacityValue');
+            const streamerMsgBorderRadiusInput = document.getElementById('streamer-messageBorderRadius');
+            const streamerMsgBorderRadiusValue = document.getElementById('streamer-messageBorderRadiusValue');
+            const streamerMsgPaddingInput = document.getElementById('streamer-messagePadding');
+            const streamerMsgPaddingValue = document.getElementById('streamer-messagePaddingValue');
+            
+            // Get DOM elements - Common
             const messageLimitInput = document.getElementById('messageLimit');
             const highlightTimeoutInput = document.getElementById('highlightTimeout');
             const highlightTimeoutValue = document.getElementById('highlightTimeoutValue');
+            const highlightColorInput = document.getElementById('highlightColor');
+            
             const saveButton = document.getElementById('saveSettings');
             const resetButton = document.getElementById('resetSettings');
             const statusMessage = document.getElementById('status-message');
 
-            // Preview elements
-            const previewChat = document.getElementById('preview-chat');
-            const previewMessages = document.querySelectorAll('.preview-message');
-            const previewContent = document.querySelectorAll('.preview-content');
-            const previewHighlight = document.querySelector('.preview-highlight');
+            // Tab switching
+            document.querySelectorAll('.tab-button').forEach(button => {
+                button.addEventListener('click', () => {
+                    // Remove active class from all tabs
+                    document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+                    document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+                    
+                    // Add active class to clicked tab
+                    button.classList.add('active');
+                    document.getElementById(button.dataset.tab).classList.add('active');
+                });
+            });
 
             // Default settings
             const defaultSettings = {
-                fontSize: 16,
-                textColor: "#ffffff",
-                chatWidth: "100%",
-                chatHeight: "400px",
                 messageLimit: 50,
-                highlightTimeout: 10000
+                highlightTimeout: 10000,
+                highlightColor: "#ff5500",
+                
+                obsView: {
+                    fontSize: 16,
+                    textColor: "#ffffff",
+                    backgroundColor: "#222222",
+                    messageBackgroundColor: "#222222",
+                    messageOpacity: 0.7,
+                    messageBorderRadius: 4,
+                    messagePadding: 8,
+                    chatWidth: "100%",
+                    chatHeight: "400px",
+                    enableDropShadow: true,
+                    theme: "dark",
+                    showBadges: true,
+                    showTimestamps: false,
+                    showPlatforms: true
+                },
+                
+                streamerView: {
+                    fontSize: 16,
+                    textColor: "#ffffff",
+                    backgroundColor: "#181818",
+                    messageBackgroundColor: "#222222",
+                    messageOpacity: 0.7,
+                    messageBorderRadius: 4,
+                    messagePadding: 8,
+                    chatWidth: "100%",
+                    chatHeight: "400px",
+                    enableDropShadow: true,
+                    theme: "dark",
+                    showBadges: true,
+                    showTimestamps: false,
+                    showPlatforms: true
+                }
             };
 
             // Connect to Socket.IO
@@ -383,49 +648,105 @@
 
             // Update UI from settings object
             function updateUIFromSettings(settings) {
-                // Update form inputs
-                fontSizeInput.value = settings.fontSize;
-                fontSizeValue.textContent = `${settings.fontSize}px`;
-                textColorInput.value = settings.textColor;
-                chatWidthInput.value = settings.chatWidth;
-                chatHeightInput.value = settings.chatHeight;
-                messageLimitInput.value = settings.messageLimit;
+                // Update OBS View form inputs
+                if (settings.obsView) {
+                    obsFontSizeInput.value = settings.obsView.fontSize || defaultSettings.obsView.fontSize;
+                    obsFontSizeValue.textContent = `${settings.obsView.fontSize || defaultSettings.obsView.fontSize}px`;
+                    obsTextColorInput.value = settings.obsView.textColor || defaultSettings.obsView.textColor;
+                    obsBackgroundColorInput.value = settings.obsView.backgroundColor || defaultSettings.obsView.backgroundColor;
+                    obsChatWidthInput.value = settings.obsView.chatWidth || defaultSettings.obsView.chatWidth;
+                    obsChatHeightInput.value = settings.obsView.chatHeight || defaultSettings.obsView.chatHeight;
+                    obsEnableDropShadowInput.checked = settings.obsView.enableDropShadow !== undefined ? settings.obsView.enableDropShadow : defaultSettings.obsView.enableDropShadow;
+                    obsThemeInput.value = settings.obsView.theme || defaultSettings.obsView.theme;
+                    obsShowBadgesInput.checked = settings.obsView.showBadges !== undefined ? settings.obsView.showBadges : defaultSettings.obsView.showBadges;
+                    obsShowTimestampsInput.checked = settings.obsView.showTimestamps !== undefined ? settings.obsView.showTimestamps : defaultSettings.obsView.showTimestamps;
+                    obsShowPlatformsInput.checked = settings.obsView.showPlatforms !== undefined ? settings.obsView.showPlatforms : defaultSettings.obsView.showPlatforms;
+                    
+                    // New message box customization options
+                    obsMsgBgColorInput.value = settings.obsView.messageBackgroundColor || defaultSettings.obsView.messageBackgroundColor;
+                    obsMsgOpacityInput.value = settings.obsView.messageOpacity || defaultSettings.obsView.messageOpacity;
+                    obsMsgOpacityValue.textContent = settings.obsView.messageOpacity || defaultSettings.obsView.messageOpacity;
+                    obsMsgBorderRadiusInput.value = settings.obsView.messageBorderRadius || defaultSettings.obsView.messageBorderRadius;
+                    obsMsgBorderRadiusValue.textContent = `${settings.obsView.messageBorderRadius || defaultSettings.obsView.messageBorderRadius}px`;
+                    obsMsgPaddingInput.value = settings.obsView.messagePadding || defaultSettings.obsView.messagePadding;
+                    obsMsgPaddingValue.textContent = `${settings.obsView.messagePadding || defaultSettings.obsView.messagePadding}px`;
+                }
+                
+                // Update Streamer View form inputs
+                if (settings.streamerView) {
+                    streamerFontSizeInput.value = settings.streamerView.fontSize || defaultSettings.streamerView.fontSize;
+                    streamerFontSizeValue.textContent = `${settings.streamerView.fontSize || defaultSettings.streamerView.fontSize}px`;
+                    streamerTextColorInput.value = settings.streamerView.textColor || defaultSettings.streamerView.textColor;
+                    streamerBackgroundColorInput.value = settings.streamerView.backgroundColor || defaultSettings.streamerView.backgroundColor;
+                    streamerChatWidthInput.value = settings.streamerView.chatWidth || defaultSettings.streamerView.chatWidth;
+                    streamerChatHeightInput.value = settings.streamerView.chatHeight || defaultSettings.streamerView.chatHeight;
+                    streamerEnableDropShadowInput.checked = settings.streamerView.enableDropShadow !== undefined ? settings.streamerView.enableDropShadow : defaultSettings.streamerView.enableDropShadow;
+                    streamerThemeInput.value = settings.streamerView.theme || defaultSettings.streamerView.theme;
+                    streamerShowBadgesInput.checked = settings.streamerView.showBadges !== undefined ? settings.streamerView.showBadges : defaultSettings.streamerView.showBadges;
+                    streamerShowTimestampsInput.checked = settings.streamerView.showTimestamps !== undefined ? settings.streamerView.showTimestamps : defaultSettings.streamerView.showTimestamps;
+                    streamerShowPlatformsInput.checked = settings.streamerView.showPlatforms !== undefined ? settings.streamerView.showPlatforms : defaultSettings.streamerView.showPlatforms;
+                    
+                    // New message box customization options
+                    streamerMsgBgColorInput.value = settings.streamerView.messageBackgroundColor || defaultSettings.streamerView.messageBackgroundColor;
+                    streamerMsgOpacityInput.value = settings.streamerView.messageOpacity || defaultSettings.streamerView.messageOpacity;
+                    streamerMsgOpacityValue.textContent = settings.streamerView.messageOpacity || defaultSettings.streamerView.messageOpacity;
+                    streamerMsgBorderRadiusInput.value = settings.streamerView.messageBorderRadius || defaultSettings.streamerView.messageBorderRadius;
+                    streamerMsgBorderRadiusValue.textContent = `${settings.streamerView.messageBorderRadius || defaultSettings.streamerView.messageBorderRadius}px`;
+                    streamerMsgPaddingInput.value = settings.streamerView.messagePadding || defaultSettings.streamerView.messagePadding;
+                    streamerMsgPaddingValue.textContent = `${settings.streamerView.messagePadding || defaultSettings.streamerView.messagePadding}px`;
+                }
+                
+                // Update Common form inputs
+                messageLimitInput.value = settings.messageLimit || defaultSettings.messageLimit;
                 
                 // Convert milliseconds to seconds for display
-                const timeoutInSeconds = settings.highlightTimeout / 1000;
+                const timeoutInSeconds = (settings.highlightTimeout || defaultSettings.highlightTimeout) / 1000;
                 highlightTimeoutInput.value = timeoutInSeconds;
                 highlightTimeoutValue.textContent = `${timeoutInSeconds}s`;
                 
-                // Update preview
-                updatePreview(settings);
-            }
-
-            // Update live preview
-            function updatePreview(settings) {
-                // Apply font size to preview content
-                previewContent.forEach(element => {
-                    element.style.fontSize = `${settings.fontSize}px`;
-                });
-
-                // Apply text color to preview content
-                previewContent.forEach(element => {
-                    element.style.color = settings.textColor;
-                });
-
-                // Apply chat dimensions
-                previewChat.style.width = settings.chatWidth;
-                previewChat.style.height = settings.chatHeight;
+                highlightColorInput.value = settings.highlightColor || defaultSettings.highlightColor;
             }
 
             // Get current settings from inputs
             function getSettingsFromUI() {
                 return {
-                    fontSize: parseInt(fontSizeInput.value),
-                    textColor: textColorInput.value,
-                    chatWidth: chatWidthInput.value,
-                    chatHeight: chatHeightInput.value,
-                    messageLimit: parseInt(messageLimitInput.value),
-                    highlightTimeout: parseInt(highlightTimeoutInput.value) * 1000 // Convert to milliseconds
+                    messageLimit: parseInt(messageLimitInput.value) || defaultSettings.messageLimit,
+                    highlightTimeout: parseInt(highlightTimeoutInput.value) * 1000 || defaultSettings.highlightTimeout,
+                    highlightColor: highlightColorInput.value || defaultSettings.highlightColor,
+                    
+                    obsView: {
+                        fontSize: parseInt(obsFontSizeInput.value) || defaultSettings.obsView.fontSize,
+                        textColor: obsTextColorInput.value || defaultSettings.obsView.textColor,
+                        backgroundColor: obsBackgroundColorInput.value || defaultSettings.obsView.backgroundColor,
+                        messageBackgroundColor: obsMsgBgColorInput.value || defaultSettings.obsView.messageBackgroundColor,
+                        messageOpacity: parseFloat(obsMsgOpacityInput.value) || defaultSettings.obsView.messageOpacity,
+                        messageBorderRadius: parseInt(obsMsgBorderRadiusInput.value) || defaultSettings.obsView.messageBorderRadius,
+                        messagePadding: parseInt(obsMsgPaddingInput.value) || defaultSettings.obsView.messagePadding,
+                        chatWidth: obsChatWidthInput.value || defaultSettings.obsView.chatWidth,
+                        chatHeight: obsChatHeightInput.value || defaultSettings.obsView.chatHeight,
+                        enableDropShadow: obsEnableDropShadowInput.checked,
+                        theme: obsThemeInput.value || defaultSettings.obsView.theme,
+                        showBadges: obsShowBadgesInput.checked,
+                        showTimestamps: obsShowTimestampsInput.checked,
+                        showPlatforms: obsShowPlatformsInput.checked
+                    },
+                    
+                    streamerView: {
+                        fontSize: parseInt(streamerFontSizeInput.value) || defaultSettings.streamerView.fontSize,
+                        textColor: streamerTextColorInput.value || defaultSettings.streamerView.textColor,
+                        backgroundColor: streamerBackgroundColorInput.value || defaultSettings.streamerView.backgroundColor,
+                        messageBackgroundColor: streamerMsgBgColorInput.value || defaultSettings.streamerView.messageBackgroundColor,
+                        messageOpacity: parseFloat(streamerMsgOpacityInput.value) || defaultSettings.streamerView.messageOpacity,
+                        messageBorderRadius: parseInt(streamerMsgBorderRadiusInput.value) || defaultSettings.streamerView.messageBorderRadius,
+                        messagePadding: parseInt(streamerMsgPaddingInput.value) || defaultSettings.streamerView.messagePadding,
+                        chatWidth: streamerChatWidthInput.value || defaultSettings.streamerView.chatWidth,
+                        chatHeight: streamerChatHeightInput.value || defaultSettings.streamerView.chatHeight,
+                        enableDropShadow: streamerEnableDropShadowInput.checked,
+                        theme: streamerThemeInput.value || defaultSettings.streamerView.theme,
+                        showBadges: streamerShowBadgesInput.checked,
+                        showTimestamps: streamerShowTimestampsInput.checked,
+                        showPlatforms: streamerShowPlatformsInput.checked
+                    }
                 };
             }
 
@@ -440,22 +761,37 @@
                 }, 3000);
             }
 
-            // Event listeners for real-time preview updates
-            fontSizeInput.addEventListener('input', () => {
-                fontSizeValue.textContent = `${fontSizeInput.value}px`;
-                updatePreview(getSettingsFromUI());
+            // Event listeners for real-time updates
+            obsFontSizeInput.addEventListener('input', () => {
+                obsFontSizeValue.textContent = `${obsFontSizeInput.value}px`;
             });
 
-            textColorInput.addEventListener('input', () => {
-                updatePreview(getSettingsFromUI());
+            streamerFontSizeInput.addEventListener('input', () => {
+                streamerFontSizeValue.textContent = `${streamerFontSizeInput.value}px`;
             });
 
-            chatWidthInput.addEventListener('input', () => {
-                updatePreview(getSettingsFromUI());
+            obsMsgOpacityInput.addEventListener('input', () => {
+                obsMsgOpacityValue.textContent = obsMsgOpacityInput.value;
             });
 
-            chatHeightInput.addEventListener('input', () => {
-                updatePreview(getSettingsFromUI());
+            obsMsgBorderRadiusInput.addEventListener('input', () => {
+                obsMsgBorderRadiusValue.textContent = `${obsMsgBorderRadiusInput.value}px`;
+            });
+
+            obsMsgPaddingInput.addEventListener('input', () => {
+                obsMsgPaddingValue.textContent = `${obsMsgPaddingInput.value}px`;
+            });
+
+            streamerMsgOpacityInput.addEventListener('input', () => {
+                streamerMsgOpacityValue.textContent = streamerMsgOpacityInput.value;
+            });
+
+            streamerMsgBorderRadiusInput.addEventListener('input', () => {
+                streamerMsgBorderRadiusValue.textContent = `${streamerMsgBorderRadiusInput.value}px`;
+            });
+
+            streamerMsgPaddingInput.addEventListener('input', () => {
+                streamerMsgPaddingValue.textContent = `${streamerMsgPaddingInput.value}px`;
             });
 
             highlightTimeoutInput.addEventListener('input', () => {
@@ -525,6 +861,8 @@
                 .catch(error => {
                     console.error('Error fetching settings:', error);
                     showStatus('Error fetching settings', 'error');
+                    // Fall back to defaults
+                    updateUIFromSettings(defaultSettings);
                 });
         });
     </script>

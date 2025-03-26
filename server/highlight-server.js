@@ -180,7 +180,14 @@ app.get('/', (req, res) => {
         // Handle settings updates
         socket.on('settings-updated', (newSettings) => {
             console.log('Received settings update:', newSettings);
-            applySettings(newSettings);
+            // Only apply the highlight timeout setting
+            if (newSettings.highlightTimeout !== undefined) {
+                // Update auto-dismiss timeout
+                if (dismissTimeout) {
+                    clearTimeout(dismissTimeout);
+                    dismissTimeout = null;
+                }
+            }
         });
         
         // Apply settings
@@ -308,12 +315,19 @@ io.on('connection', (socket) => {
   
   // Handle settings update
   socket.on('settings-updated', (newSettings) => {
-    // Update settings
-    settings = { ...settings, ...newSettings };
-    console.log('Received settings update:', settings);
+    // ONLY accept and apply the highlightTimeout setting
+    if (newSettings.highlightTimeout !== undefined) {
+      settings.highlightTimeout = newSettings.highlightTimeout;
+      console.log('Received highlight timeout update:', settings.highlightTimeout);
+      
+      // Broadcast ONLY the highlight timeout to clients
+      io.emit('settings-updated', { 
+        highlightTimeout: settings.highlightTimeout 
+      });
+    }
     
-    // Broadcast to all clients
-    io.emit('settings-updated', settings);
+    // Explicitly ignore all other settings
+    console.log('Ignoring other settings, only accepting highlightTimeout');
   });
   
   // Handle disconnection

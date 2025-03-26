@@ -73,6 +73,11 @@ document.addEventListener('DOMContentLoaded', () => {
             element.style.color = settings.textColor || defaultSettings.textColor;
         });
 
+        const previewMessages = document.querySelectorAll('.preview-message, .preview-highlight');
+        previewMessages.forEach(element => {
+            element.style.textShadow = settings.enableDropShadow ? '1px 1px 2px rgba(0,0,0,0.8)' : 'none';
+        });
+
         // Apply chat dimensions
         if (previewChat) {
             previewChat.style.width = settings.chatWidth || defaultSettings.chatWidth;
@@ -150,6 +155,20 @@ document.addEventListener('DOMContentLoaded', () => {
             showStatus('Error saving settings', 'error');
         });
     });
+
+    // Add this to the document.addEventListener('DOMContentLoaded') function in dashboard.js
+const enableDropShadowInput = document.getElementById('enableDropShadow');
+
+// Add this to the updateUIFromSettings function
+enableDropShadowInput.checked = settings.enableDropShadow || defaultSettings.enableDropShadow;
+
+// Add this to the getSettingsFromUI function
+enableDropShadow: enableDropShadowInput.checked,
+
+// Add an event listener for the drop shadow toggle
+enableDropShadowInput.addEventListener('change', () => {
+    updatePreview(getSettingsFromUI());
+});
 
     // Reset to defaults
     resetButton.addEventListener('click', () => {

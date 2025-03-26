@@ -39,6 +39,7 @@ let settings = {
   // Functional customization
   messageLimit: 50,
   highlightTimeout: 10000, // milliseconds before auto-dismissing highlighted messages
+  enableDropShadow: true, // Drop shadow toggle
 };
 
 // Load settings from file if exists
@@ -128,10 +129,12 @@ app.post('/api/settings', (req, res) => {
     console.warn('Cannot send settings to main server - not connected');
   }
   
-  // Send to highlight server
+  // Send ONLY highlightTimeout to highlight server
   if (highlightConnected) {
-    highlightSocket.emit('settings-updated', settings);
-    console.log('Settings sent to highlight server');
+    highlightSocket.emit('settings-updated', { 
+      highlightTimeout: settings.highlightTimeout 
+    });
+    console.log('Highlight timeout sent to highlight server');
   } else {
     console.warn('Cannot send settings to highlight server - not connected');
   }
@@ -155,29 +158,22 @@ dashboardIo.on('connection', (socket) => {
   
   // Handle settings update from client
   socket.on('update-settings', (newSettings) => {
+    console.log('Received settings update from dashboard:', newSettings);
+    
     // Update settings
     settings = { ...settings, ...newSettings };
     
-    // Save to file
-    saveSettings();
-    
-    // Broadcast to all dashboard clients
-    dashboardIo.emit('settings-updated', settings);
-    
-    // Send to main server
+    // Send to main server - ALL settings
     if (mainConnected) {
+      console.log('Sending complete settings to main server:', settings);
       mainSocket.emit('settings-updated', settings);
-      console.log('Settings sent to main server');
-    } else {
-      console.warn('Cannot send settings to main server - not connected');
     }
     
-    // Send to highlight server
+    // Send ONLY highlightTimeout to highlight server
     if (highlightConnected) {
-      highlightSocket.emit('settings-updated', settings);
-      console.log('Settings sent to highlight server');
-    } else {
-      console.warn('Cannot send settings to highlight server - not connected');
+      const highlightSettings = { highlightTimeout: settings.highlightTimeout };
+      console.log('Sending ONLY timeout to highlight server:', highlightSettings);
+      highlightSocket.emit('settings-updated', highlightSettings);
     }
   });
   
