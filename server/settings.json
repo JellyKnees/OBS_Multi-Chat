@@ -1,32 +1,23 @@
 {
-  "fontSize": 16,
-  "textColor": "#ffffff",
-  "chatWidth": "100%",
-  "chatHeight": "500px",
   "messageLimit": 50,
   "highlightTimeout": 10000,
-  "enableDropShadow": true,
-  "theme": "light",
-  "showBadges": true,
-  "showTimestamps": false,
-  "showPlatforms": true,
-  "backgroundColor": "#222222",
   "highlightColor": "#ff5500",
   "obsView": {
     "fontSize": 16,
     "textColor": "#ffffff",
-    "backgroundColor": "#222222",
-    "messageBackgroundColor": "#ffffff",
+    "backgroundColor": "#000000",
+    "messageBackgroundColor": "#222222",
     "messageOpacity": 0.7,
-    "messageBorderRadius": 20,
+    "messageBorderRadius": 4,
     "messagePadding": 8,
     "chatWidth": "100%",
     "chatHeight": "400px",
     "enableDropShadow": true,
-    "theme": "light",
+    "theme": "dark",
     "showBadges": true,
     "showTimestamps": false,
-    "showPlatforms": true
+    "showPlatforms": true,
+    "showMessageBackground": false
   },
   "streamerView": {
     "fontSize": 16,
@@ -43,5 +34,15 @@
     "showBadges": true,
     "showTimestamps": false,
     "showPlatforms": true
-  }
+  },
+  "fontSize": 16,
+  "textColor": "#ffffff",
+  "chatWidth": "100%",
+  "chatHeight": "500px",
+  "enableDropShadow": true,
+  "theme": "light",
+  "showBadges": true,
+  "showTimestamps": false,
+  "showPlatforms": true,
+  "backgroundColor": "#222222"
 }
