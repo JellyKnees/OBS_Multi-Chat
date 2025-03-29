@@ -1,6 +1,14 @@
 document.addEventListener('DOMContentLoaded', () => {
+  console.log('Dashboard initialized');
+  
   // Safely get DOM elements with null checks
-  const getElement = (id) => document.getElementById(id);
+  const getElement = (id) => {
+    const element = document.getElementById(id);
+    if (!element) {
+      console.warn(`Element with ID '${id}' not found`);
+    }
+    return element;
+  };
 
   // OBS View elements
   const obsFontSizeInput = getElement('obs-fontSize');
@@ -28,6 +36,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const streamerChatWidthInput = getElement('streamer-chatWidth');
   const streamerChatHeightInput = getElement('streamer-chatHeight');
   const streamerEnableDropShadowInput = getElement('streamer-enableDropShadow');
+  const streamerShowMessageBackgroundInput = getElement('streamer-showMessageBackground');
   const streamerMsgOpacityInput = getElement('streamer-messageOpacity');
   const streamerMsgOpacityValue = getElement('streamer-messageOpacityValue');
   const streamerMsgBorderRadiusInput = getElement('streamer-messageBorderRadius');
@@ -55,6 +64,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (tabButtons && tabButtons.length > 0) {
     tabButtons.forEach(button => {
       button.addEventListener('click', () => {
+        console.log('Tab clicked:', button.dataset.tab);
         // Remove active class from all tabs
         tabButtons.forEach(btn => btn.classList.remove('active'));
         tabContents.forEach(content => content.classList.remove('active'));
@@ -109,22 +119,69 @@ document.addEventListener('DOMContentLoaded', () => {
   let settings = JSON.parse(JSON.stringify(defaultSettings));
 
   // Connect to Socket.IO
-  const socket = io();
+  let socket;
+  try {
+    console.log("Connecting to Socket.IO server...");
+    socket = io();
+    
+    socket.on('connect', () => {
+      console.log("Connected to Socket.IO server");
+    });
+    
+    socket.on('connect_error', (err) => {
+      console.error("Socket.IO connection error:", err);
+      showStatus('Socket connection error, please refresh page', 'error');
+    });
+  } catch (error) {
+    console.error("Error initializing Socket.IO:", error);
+    showStatus('Failed to connect to server', 'error');
+  }
 
   // Handle settings received from server
-  socket.on('settings', (receivedSettings) => {
-    console.log("Received settings:", receivedSettings);
-    settings = receivedSettings;
-    updateUIFromSettings(settings);
-  });
+  if (socket) {
+    socket.on('settings', (receivedSettings) => {
+      console.log("Received settings from server:", receivedSettings);
+      
+      // Validate the received settings
+      if (!receivedSettings || typeof receivedSettings !== 'object') {
+        console.error("Invalid settings object received:", receivedSettings);
+        return;
+      }
+      
+      // Check if streamerView exists and has the expected structure
+      if (!receivedSettings.streamerView) {
+        console.error("Missing streamerView in settings:", receivedSettings);
+        receivedSettings.streamerView = {}; // Create it to avoid errors
+      }
+      
+      // Ensure showMessageBackground has a default if missing
+      if (receivedSettings.streamerView.showMessageBackground === undefined) {
+        console.log("showMessageBackground not found in settings, using default true");
+        receivedSettings.streamerView.showMessageBackground = true;
+      } else {
+        console.log("Found showMessageBackground in settings:", 
+                   receivedSettings.streamerView.showMessageBackground);
+      }
+      
+      // Update the local settings object
+      settings = receivedSettings;
+      
+      // Update the UI with the processed settings
+      updateUIFromSettings(settings);
+    });
 
-  // Handle settings updates from other clients
-  socket.on('settings-updated', (receivedSettings) => {
-    console.log("Settings updated from server:", receivedSettings);
-    settings = receivedSettings;
-    updateUIFromSettings(settings);
-    showStatus('Settings updated', 'success');
-  });
+    // Handle settings updates from other clients
+    socket.on('settings-updated', (receivedSettings) => {
+      console.log("Settings updated from server:", receivedSettings);
+      if (receivedSettings && typeof receivedSettings === 'object') {
+        settings = receivedSettings;
+        updateUIFromSettings(settings);
+        showStatus('Settings updated', 'success');
+      } else {
+        console.error("Invalid settings update received:", receivedSettings);
+      }
+    });
+  }
 
   // Update UI from settings object
   function updateUIFromSettings(settings) {
@@ -221,6 +278,13 @@ document.addEventListener('DOMContentLoaded', () => {
         streamerEnableDropShadowInput.checked = settings.streamerView.enableDropShadow !== undefined ? 
           settings.streamerView.enableDropShadow : defaultSettings.streamerView.enableDropShadow;
       }
+
+      if (streamerShowMessageBackgroundInput) {
+        console.log("Current showMessageBackground value:", settings.streamerView.showMessageBackground);
+        // Explicitly check if the value is false to handle both undefined and false cases
+        streamerShowMessageBackgroundInput.checked = settings.streamerView.showMessageBackground !== false;
+        console.log("Checkbox set to:", streamerShowMessageBackgroundInput.checked);
+      }
       
       if (streamerMsgOpacityInput && streamerMsgOpacityValue) {
         const opacity = settings.streamerView.messageOpacity !== undefined ? 
@@ -277,7 +341,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Get current settings from inputs
   function getSettingsFromUI() {
-    const settings = {
+    const newSettings = {
       messageLimit: messageLimitInput ? parseInt(messageLimitInput.value) || defaultSettings.messageLimit : defaultSettings.messageLimit,
       highlightTimeout: highlightTimeoutInput ? parseInt(highlightTimeoutInput.value) * 1000 || defaultSettings.highlightTimeout : defaultSettings.highlightTimeout,
       highlightColor: highlightColorInput ? highlightColorInput.value || defaultSettings.highlightColor : defaultSettings.highlightColor,
@@ -307,12 +371,13 @@ document.addEventListener('DOMContentLoaded', () => {
         chatWidth: streamerChatWidthInput ? streamerChatWidthInput.value || defaultSettings.streamerView.chatWidth : defaultSettings.streamerView.chatWidth,
         chatHeight: streamerChatHeightInput ? streamerChatHeightInput.value || defaultSettings.streamerView.chatHeight : defaultSettings.streamerView.chatHeight,
         enableDropShadow: streamerEnableDropShadowInput ? streamerEnableDropShadowInput.checked : defaultSettings.streamerView.enableDropShadow,
+        showMessageBackground: streamerShowMessageBackgroundInput ? streamerShowMessageBackgroundInput.checked : true,
         showTimestamps: streamerShowTimestampsInput ? streamerShowTimestampsInput.checked : defaultSettings.streamerView.showTimestamps,
         showPlatforms: streamerShowPlatformsInput ? streamerShowPlatformsInput.checked : defaultSettings.streamerView.showPlatforms
       }
     };
     
-    return settings;
+    return newSettings;
   }
 
   // Show status message
@@ -389,32 +454,44 @@ document.addEventListener('DOMContentLoaded', () => {
   // Save settings
   if (saveButton) {
     saveButton.addEventListener('click', () => {
-      const newSettings = getSettingsFromUI();
-      console.log('Saving settings:', JSON.stringify(newSettings, null, 2));
-      
-      // Send settings to server via Socket.IO
-      socket.emit('update-settings', newSettings);
-      
-      // Also send via REST API for redundancy
-      fetch('/api/settings', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(newSettings)
-      })
-      .then(response => response.json())
-      .then(data => {
-        if (data.success) {
-          showStatus('Settings saved successfully', 'success');
-        } else {
-          showStatus('Error saving settings', 'error');
+      try {
+        const newSettings = getSettingsFromUI();
+        console.log('Saving settings:', JSON.stringify(newSettings, null, 2));
+        
+        // Send settings to server via Socket.IO
+        if (socket) {
+          socket.emit('update-settings', newSettings);
         }
-      })
-      .catch(error => {
-        console.error('Error saving settings:', error);
-        showStatus('Error saving settings', 'error');
-      });
+        
+        // Also send via REST API for redundancy
+        fetch('/api/settings', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(newSettings)
+        })
+        .then(response => {
+          if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+          }
+          return response.json();
+        })
+        .then(data => {
+          if (data.success) {
+            showStatus('Settings saved successfully', 'success');
+          } else {
+            showStatus('Error saving settings: ' + (data.error || 'Unknown error'), 'error');
+          }
+        })
+        .catch(error => {
+          console.error('Error saving settings:', error);
+          showStatus('Error saving settings: ' + error.message, 'error');
+        });
+      } catch (error) {
+        console.error('Error preparing settings:', error);
+        showStatus('Error preparing settings: ' + error.message, 'error');
+      }
     });
   }
 
@@ -432,17 +509,22 @@ document.addEventListener('DOMContentLoaded', () => {
           },
           body: JSON.stringify(defaultSettings)
         })
-        .then(response => response.json())
+        .then(response => {
+          if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+          }
+          return response.json();
+        })
         .then(data => {
           if (data.success) {
             showStatus('Settings reset to defaults', 'success');
           } else {
-            showStatus('Error resetting settings', 'error');
+            showStatus('Error resetting settings: ' + (data.error || 'Unknown error'), 'error');
           }
         })
         .catch(error => {
           console.error('Error resetting settings:', error);
-          showStatus('Error resetting settings', 'error');
+          showStatus('Error resetting settings: ' + error.message, 'error');
         });
       }
     });
@@ -450,16 +532,44 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Fetch current settings on load
   fetch('/api/settings')
-    .then(response => response.json())
-    .then(fetchedSettings => {
-      console.log('Fetched initial settings:', fetchedSettings);
-      settings = fetchedSettings;
-      updateUIFromSettings(settings);
-    })
-    .catch(error => {
-      console.error('Error fetching settings:', error);
-      showStatus('Error fetching settings', 'error');
-      // Fall back to defaults
-      updateUIFromSettings(defaultSettings);
-    });
+  .then(response => {
+    if (!response.ok) {
+      throw new Error(`HTTP error! Status: ${response.status}`);
+    }
+    return response.json();
+  })
+  .then(fetchedSettings => {
+    console.log('Fetched initial settings:', fetchedSettings);
+    
+    // Validate the fetched settings
+    if (!fetchedSettings || typeof fetchedSettings !== 'object') {
+      console.error("Invalid settings object received from API:", fetchedSettings);
+      throw new Error("Invalid settings format");
+    }
+    
+    // Ensure streamerView exists
+    if (!fetchedSettings.streamerView) {
+      console.warn("No streamerView in fetched settings, creating it");
+      fetchedSettings.streamerView = {};
+    }
+    
+    // Check specifically for showMessageBackground
+    if (fetchedSettings.streamerView.showMessageBackground === undefined) {
+      console.warn("No showMessageBackground in fetched settings, using default");
+      fetchedSettings.streamerView.showMessageBackground = true;
+    } else {
+      console.log("showMessageBackground value from API:", 
+                  fetchedSettings.streamerView.showMessageBackground);
+    }
+    
+    // Update settings and UI
+    settings = fetchedSettings;
+    updateUIFromSettings(settings);
+  })
+  .catch(error => {
+    console.error('Error fetching settings:', error);
+    showStatus('Error fetching settings: ' + error.message, 'error');
+    // Fall back to defaults
+    updateUIFromSettings(defaultSettings);
+  });
 });

@@ -10,7 +10,11 @@ const io = require('socket.io-client');
 const app = express();
 app.use(cors());
 app.use(express.json());
-app.use(express.static(path.join(__dirname, '../customization')));
+
+// Explicitly set the static directory path
+const staticPath = path.join(__dirname, '..', 'customization');
+console.log('Serving static files from:', staticPath);
+app.use(express.static(staticPath));
 
 // Create HTTP server
 const server = http.createServer(app);
@@ -50,7 +54,8 @@ let settings = {
     theme: "dark",
     showBadges: true,
     showTimestamps: false,
-    showPlatforms: true
+    showPlatforms: true,
+    showMessageBackground: true
   },
   
   // Streamer View specific settings
@@ -68,7 +73,8 @@ let settings = {
     theme: "dark",
     showBadges: true,
     showTimestamps: false,
-    showPlatforms: true
+    showPlatforms: true,
+    showMessageBackground: true
   },
 };
 
@@ -118,6 +124,7 @@ highlightSocket.on('disconnect', () => {
 // Save settings to file
 function saveSettings() {
   try {
+    // Ensure all settings are properly saved to file
     fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
     console.log('Settings saved to file');
   } catch (error) {
@@ -180,7 +187,8 @@ function processSpecialSettings(newSettings) {
 
 // Home route - serve the dashboard UI
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, '../customization/dashboard.html'));
+  console.log('Serving dashboard.html');
+  res.sendFile(path.join(staticPath, 'dashboard.html'));
 });
 
 // Settings API endpoint - get current settings

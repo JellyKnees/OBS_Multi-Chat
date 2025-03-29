@@ -98,21 +98,21 @@ try {
 
 // Socket.IO connection handling for main chat
 chatIo.on('connection', (socket) => {
-  console.log('Client connected to main chat:', socket.id);
-  
-  // Send current settings to client
-  socket.emit('settings', settings);
-  
-  // Get settings handler
-  socket.on('get-settings', () => {
-    console.log('Settings requested by client');
+    console.log('Client connected to main chat:', socket.id);
+    
+    // Send current settings to client
     socket.emit('settings', settings);
-  });
-  
-  // Send only the last N messages to new clients (based on message limit setting)
-  if (chatMessages.length > 0) {
-    socket.emit('chat-history', chatMessages.slice(-settings.messageLimit));
-  }
+    
+    // Get settings handler
+    socket.on('get-settings', () => {
+      console.log('Settings requested by client');
+      socket.emit('settings', settings);
+    });
+    
+    // Send only the last N messages to new clients (based on message limit setting)
+    if (chatMessages.length > 0) {
+      socket.emit('chat-history', chatMessages.slice(-settings.messageLimit));
+    }
   
   // Handle new chat messages
   socket.on('chat-message', (message) => {
@@ -168,18 +168,23 @@ socket.on('clear-highlight', () => {
 
 // Handle settings update
 socket.on('settings-updated', (newSettings) => {
-  // Update settings
-  settings = { ...settings, ...newSettings };
-  console.log('Received settings update:', settings);
-  
-  // Broadcast all settings to main chat clients
-  chatIo.emit('settings-updated', settings);
-  
-  // Forward ONLY the highlightTimeout to highlight server
-  highlightSocket.emit('settings-updated', { 
-    highlightTimeout: settings.highlightTimeout 
+    // Make sure to log incoming settings for debugging
+    console.log('Received settings update from customization server:', JSON.stringify(newSettings));
+    
+    // Update settings - make sure this uses a deep merge or properly handles all nested properties
+    settings = { ...settings, ...newSettings };
+    
+    // Log the merged settings for debugging
+    console.log('Updated merged settings:', JSON.stringify(settings));
+    
+    // Broadcast all settings to main chat clients
+    chatIo.emit('settings-updated', settings);
+    
+    // Forward ONLY the highlightTimeout to highlight server
+    highlightSocket.emit('settings-updated', { 
+      highlightTimeout: settings.highlightTimeout 
+    });
   });
-});
 
 // Handle disconnection
 socket.on('disconnect', () => {
@@ -455,288 +460,339 @@ app.get('/streamer-view', (req, res) => {
     res.setHeader('Pragma', 'no-cache');
     res.setHeader('Expires', '0');
     
-    res.send(`<!DOCTYPE html>
-  <html>
-  <head>
-      <meta charset="UTF-8">
-      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
-      <title>Streamer View</title>
-      <style>
-          body {
-              background-color: ${settings.streamerView.backgroundColor};
-              font-family: 'Inter', sans-serif;
-              margin: 0;
-              padding: 0;
-          }
-          
-          #chat {
-              width: ${settings.streamerView.chatWidth};
-              height: ${settings.streamerView.chatHeight};
-              overflow-y: auto;
-              padding: 10px;
-          }
-          
-          .msg {
-              margin-bottom: 8px;
-              padding: 8px;
-              border-radius: 4px;
-              background: rgba(40, 40, 40, 0.7);
-              font-size: ${settings.streamerView.fontSize}px;
-              color: ${settings.streamerView.textColor};
-              cursor: pointer;
-              text-shadow: ${settings.streamerView.enableDropShadow ? '1px 1px 2px rgba(0,0,0,0.8)' : 'none'};
-              overflow-wrap: break-word;
-              word-wrap: break-word;
-              word-break: break-word;
-          }
-          
+    // Determine text shadow based on enableDropShadow setting
+    const textShadow = settings.streamerView.enableDropShadow 
+        ? '1px 1px 2px rgba(0,0,0,0.8)' 
+        : 'none';
+    
+    // Build the background color with opacity
+    const backgroundColor = settings.streamerView.backgroundColor || '#181818';
+    const opacity = settings.streamerView.messageOpacity !== undefined ? 
+        settings.streamerView.messageOpacity : 0.7;
+    
+    // Get values with fallbacks
+    const borderRadius = settings.streamerView.messageBorderRadius !== undefined ?
+        settings.streamerView.messageBorderRadius : 4;
+        
+    const padding = settings.streamerView.messagePadding !== undefined ?
+        settings.streamerView.messagePadding : 8;
+        
+    // Check if message backgrounds are enabled (fallback to true if not defined)
+    const showMessageBackground = settings.streamerView.showMessageBackground !== undefined ? 
+        settings.streamerView.showMessageBackground : true;
+    
+    // Build background style based on showMessageBackground setting
+    const backgroundStyle = showMessageBackground
+      ? `background: rgba(${parseInt(backgroundColor.slice(1, 3), 16)}, 
+                        ${parseInt(backgroundColor.slice(3, 5), 16)}, 
+                        ${parseInt(backgroundColor.slice(5, 7), 16)}, 
+                        ${opacity});`
+      : 'background: transparent;';
+    
+    // Build border styles based on showMessageBackground setting
+    const borderStyles = showMessageBackground 
+      ? `
           .yt { border-left: 3px solid #ff0000; }
           .tw { border-left: 3px solid #9146FF; }
-          
-          .yt .name { color: #ff0000; font-weight: bold; font-size: ${parseInt(settings.streamerView.fontSize) + 2}px; }
-          .tw .name { color: #9146FF; font-weight: bold; font-size: ${parseInt(settings.streamerView.fontSize) + 2}px; }
-          
-          .content { 
-              color: ${settings.streamerView.textColor}; 
-              font-size: ${settings.streamerView.fontSize}px;
-              display: inline;
+      `
+      : `
+          .yt, .tw {
+              border-left: none;
           }
-          
-          .icon {
-              display: ${settings.streamerView.showPlatforms ? 'inline' : 'none'};
-              width: 16px;
-              height: 16px;
-              margin-right: 5px;
-              vertical-align: middle;
-          }
-  
-          .badge {
-              display: ${settings.streamerView.showBadges ? 'inline-block' : 'none'};
-              width: 18px;
-              height: 18px;
-              margin-right: 4px;
-              background-size: contain;
-              background-repeat: no-repeat;
-              background-position: center;
-          }
-  
-          .timestamp {
-              font-size: 0.8em;
-              color: #aaa;
-              margin-left: auto;
-              display: ${settings.streamerView.showTimestamps ? 'inline-block' : 'none'};
-          }
-          
-          /* Fix for emojis */
-          .content img, 
-          .content span[role="img"],
-          .content .emoji,
-          .content em img,
-          .content em span {
-              vertical-align: middle !important;
-              height: 1.2em !important;
-              width: auto !important;
-              max-height: 1.2em !important;
-              max-width: 1.5em !important;
-              margin: 0 0.1em !important;
-              display: inline-flex !important;
-              font-size: inherit !important;
-          }
-          
-          img.emoji {
-              height: 1.2em !important;
-              width: auto !important;
-              vertical-align: middle !important;
-          }
-      </style>
-  </head>
-  <body>
-      <div id="chat"></div>
-      <script src="/socket.io/socket.io.js"></script>
-      <script>
-          const chat = document.getElementById('chat');
-          let userScrolled = false;
-          
-          const socket = io();
-          
-          // Force reload on settings change
-          socket.on('settings-updated', () => window.location.reload());
-          
-          socket.on('chat-message', addMessage);
-          
-          socket.on('chat-history', (messages) => {
-              chat.innerHTML = '';
-              messages.forEach(addMessage);
-          });
-          
-          // Handle scroll with activity detection
-chat.onscroll = () => {
-    resetActivityTimer();
-    const bottom = chat.scrollHeight - chat.clientHeight;
-    userScrolled = (bottom - chat.scrollTop) > 30;
-};
-
-// Auto-scroll after inactivity
-let activityTimer;
-function resetActivityTimer() {
-    clearTimeout(activityTimer);
-    activityTimer = setTimeout(() => {
-        userScrolled = false;
-        smoothScrollToBottom();
-        console.log("Auto-scrolling after 5 seconds of inactivity");
-    }, 5000); // 5 seconds
-}
-
-// Add mouse and keyboard activity detection
-chat.addEventListener('mousemove', resetActivityTimer);
-chat.addEventListener('keydown', resetActivityTimer);
-chat.addEventListener('click', resetActivityTimer);
-
-// Initialize the activity timer
-resetActivityTimer();
-
-// Smooth scroll to bottom function
-function smoothScrollToBottom() {
-    const targetPosition = chat.scrollHeight - chat.clientHeight;
-    const startPosition = chat.scrollTop;
-    const distance = targetPosition - startPosition;
-    const duration = 800; // milliseconds
-    let startTime = null;
+      `;
     
-    function animation(currentTime) {
-        if (startTime === null) startTime = currentTime;
-        const elapsedTime = currentTime - startTime;
-        const progress = Math.min(elapsedTime / duration, 1);
+    res.send(`<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <title>Streamer View</title>
+    <style>
+        body {
+            background-color: ${settings.streamerView.backgroundColor};
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 0;
+        }
         
-        // Easing function (ease-out cubic)
-        const ease = 1 - Math.pow(1 - progress, 3);
+        #chat {
+            width: ${settings.streamerView.chatWidth};
+            height: ${settings.streamerView.chatHeight};
+            overflow-y: auto;
+            padding: 10px;
+        }
         
-        chat.scrollTop = startPosition + distance * ease;
+        .msg {
+            margin-bottom: 8px;
+            padding: ${padding}px;
+            border-radius: ${borderRadius}px;
+            ${backgroundStyle}
+            font-size: ${settings.streamerView.fontSize}px;
+            color: ${settings.streamerView.textColor};
+            cursor: pointer;
+            text-shadow: ${textShadow};
+            overflow-wrap: break-word;
+            word-wrap: break-word;
+            word-break: break-word;
+        }
         
-        if (elapsedTime < duration) {
+        ${borderStyles}
+        
+        .yt .name { color: #ff0000; font-weight: bold; font-size: ${parseInt(settings.streamerView.fontSize) + 2}px; }
+        .tw .name { color: #9146FF; font-weight: bold; font-size: ${parseInt(settings.streamerView.fontSize) + 2}px; }
+        
+        .content { 
+            color: ${settings.streamerView.textColor}; 
+            font-size: ${settings.streamerView.fontSize}px;
+            display: inline;
+        }
+        
+        /* Make all links/URLs appear white */
+        .content a {
+            color: ${settings.streamerView.textColor} !important;
+            text-decoration: none !important;
+        }
+
+        /* Add a subtle indicator for links if needed */
+        .content a:hover {
+            text-decoration: underline !important;
+        }
+        
+        .icon {
+            display: ${settings.streamerView.showPlatforms ? 'inline' : 'none'};
+            width: 16px;
+            height: 16px;
+            margin-right: 5px;
+            vertical-align: middle;
+        }
+  
+        .badge {
+            display: ${settings.streamerView.showBadges ? 'inline-block' : 'none'};
+            width: 18px;
+            height: 18px;
+            margin-right: 4px;
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+        }
+  
+        .timestamp {
+            font-size: 0.8em;
+            color: #aaa;
+            margin-left: auto;
+            display: ${settings.streamerView.showTimestamps ? 'inline-block' : 'none'};
+        }
+        
+        /* Fix for emojis */
+        .content img, 
+        .content span[role="img"],
+        .content .emoji,
+        .content em img,
+        .content em span {
+            vertical-align: middle !important;
+            height: 1.2em !important;
+            width: auto !important;
+            max-height: 1.2em !important;
+            max-width: 1.5em !important;
+            margin: 0 0.1em !important;
+            display: inline-flex !important;
+            font-size: inherit !important;
+        }
+        
+        img.emoji {
+            height: 1.2em !important;
+            width: auto !important;
+            vertical-align: middle !important;
+        }
+    </style>
+</head>
+<body>
+    <div id="chat"></div>
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const chat = document.getElementById('chat');
+        let userScrolled = false;
+        
+        const socket = io();
+        
+        // Force reload on settings change
+        socket.on('settings-updated', () => window.location.reload());
+        
+        socket.on('chat-message', addMessage);
+        
+        socket.on('chat-history', (messages) => {
+            chat.innerHTML = '';
+            messages.forEach(addMessage);
+        });
+        
+        // Handle scroll with activity detection
+        chat.onscroll = () => {
+            resetActivityTimer();
+            const bottom = chat.scrollHeight - chat.clientHeight;
+            userScrolled = (bottom - chat.scrollTop) > 30;
+        };
+
+        // Auto-scroll after inactivity
+        let activityTimer;
+        function resetActivityTimer() {
+            clearTimeout(activityTimer);
+            activityTimer = setTimeout(() => {
+                userScrolled = false;
+                smoothScrollToBottom();
+                console.log("Auto-scrolling after 5 seconds of inactivity");
+            }, 5000); // 5 seconds
+        }
+
+        // Add mouse and keyboard activity detection
+        chat.addEventListener('mousemove', resetActivityTimer);
+        chat.addEventListener('keydown', resetActivityTimer);
+        chat.addEventListener('click', resetActivityTimer);
+
+        // Initialize the activity timer
+        resetActivityTimer();
+
+        // Smooth scroll to bottom function
+        function smoothScrollToBottom() {
+            const targetPosition = chat.scrollHeight - chat.clientHeight;
+            const startPosition = chat.scrollTop;
+            const distance = targetPosition - startPosition;
+            const duration = 800; // milliseconds
+            let startTime = null;
+            
+            function animation(currentTime) {
+                if (startTime === null) startTime = currentTime;
+                const elapsedTime = currentTime - startTime;
+                const progress = Math.min(elapsedTime / duration, 1);
+                
+                // Easing function (ease-out cubic)
+                const ease = 1 - Math.pow(1 - progress, 3);
+                
+                chat.scrollTop = startPosition + distance * ease;
+                
+                if (elapsedTime < duration) {
+                    requestAnimationFrame(animation);
+                }
+            }
+            
             requestAnimationFrame(animation);
         }
-    }
-    
-    requestAnimationFrame(animation);
-}
 
-// Update regular scrollDown function to use the smooth version when appropriate
-function scrollDown() {
-    if (Math.abs(chat.scrollHeight - chat.clientHeight - chat.scrollTop) > 300) {
-        // If we're far from the bottom, use smooth scrolling
-        smoothScrollToBottom();
-    } else {
-        // If we're close to the bottom, use instant scrolling
-        chat.scrollTop = chat.scrollHeight;
+        // Update regular scrollDown function to use the smooth version when appropriate
+        function scrollDown() {
+            if (Math.abs(chat.scrollHeight - chat.clientHeight - chat.scrollTop) > 300) {
+                // If we're far from the bottom, use smooth scrolling
+                smoothScrollToBottom();
+            } else {
+                // If we're close to the bottom, use instant scrolling
+                chat.scrollTop = chat.scrollHeight;
+                
+                // Multiple delayed attempts to ensure all content renders
+                [10, 50, 100, 300, 500].forEach(delay => {
+                    setTimeout(() => {
+                        if (!userScrolled) {
+                            chat.scrollTop = chat.scrollHeight;
+                        }
+                    }, delay);
+                });
+            }
+        }
+          
+        // Function to fix emoji sizes
+        function fixEmojiSizes(element) {
+            // Find all images in the element
+            const images = element.querySelectorAll('img');
+            images.forEach(img => {
+                img.style.height = '1.2em';
+                img.style.width = 'auto';
+                img.style.maxHeight = '1.2em';
+                img.style.maxWidth = '1.5em';
+                img.style.verticalAlign = 'middle';
+            });
+            
+            // Find all emoji spans
+            const emojiSpans = element.querySelectorAll('span[role="img"]');
+            emojiSpans.forEach(span => {
+                span.style.fontSize = 'inherit';
+                span.style.display = 'inline-flex';
+                span.style.height = '1.2em';
+                span.style.verticalAlign = 'middle';
+            });
+        }
         
-        // Multiple delayed attempts to ensure all content renders
-        [10, 50, 100, 300, 500].forEach(delay => {
-            setTimeout(() => {
-                if (!userScrolled) {
-                    chat.scrollTop = chat.scrollHeight;
-                }
-            }, delay);
-        });
-    }
-}
-          
-          // Function to fix emoji sizes
-          function fixEmojiSizes(element) {
-              // Find all images in the element
-              const images = element.querySelectorAll('img');
-              images.forEach(img => {
-                  img.style.height = '1.2em';
-                  img.style.width = 'auto';
-                  img.style.maxHeight = '1.2em';
-                  img.style.maxWidth = '1.5em';
-                  img.style.verticalAlign = 'middle';
-              });
-              
-              // Find all emoji spans
-              const emojiSpans = element.querySelectorAll('span[role="img"]');
-              emojiSpans.forEach(span => {
-                  span.style.fontSize = 'inherit';
-                  span.style.display = 'inline-flex';
-                  span.style.height = '1.2em';
-                  span.style.verticalAlign = 'middle';
-              });
-          }
-          
-          function addMessage(msg) {
-              const el = document.createElement('div');
-              el.className = 'msg ' + (msg.platform.toLowerCase() === 'youtube' ? 'yt' : 'tw');
-              el.dataset.id = msg.id;
-              
-              let icon = '';
-              if (msg.platform.toLowerCase() === 'youtube') {
-                  icon = '<svg class="icon" viewBox="0 0 24 24"><path d="M23.5 6.2c-.2-1-1-1.8-2.1-2.1C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.4.5c-1.1.3-1.9 1.1-2.1 2.1C0 8.1 0 12 0 12s0 3.9.5 5.8c.2 1 1 1.8 2.1 2.1 1.9.5 9.4.5 9.4.5s7.5 0 9.4-.5c1.1-.3 1.9-1.1 2.1-2.1.5-1.9.5-5.8.5-5.8s0-3.9-.5-5.8zM9.5 15.6V8.4l6.3 3.6-6.3 3.6z" fill="#FF0000"/></svg>';
-              } else {
-                  icon = '<svg class="icon" viewBox="0 0 24 24"><path d="M11.6 4.7h1.7v5.1h-1.7v-5.1zm4.7 0H18v5.1h-1.7v-5.1zM6 0L1.7 4.3v15.4h5.1V24l4.3-4.3h3.4L22.3 12V0H6zm14.6 11.1l-3.4 3.4h-3.4l-3 3v-3H6.9V1.7h13.7v9.4z" fill="#9146FF"/></svg>';
-              }
+        function addMessage(msg) {
+            const el = document.createElement('div');
+            el.className = 'msg ' + (msg.platform.toLowerCase() === 'youtube' ? 'yt' : 'tw');
+            el.dataset.id = msg.id;
+            
+            let icon = '';
+            if (msg.platform.toLowerCase() === 'youtube') {
+                icon = '<svg class="icon" viewBox="0 0 24 24"><path d="M23.5 6.2c-.2-1-1-1.8-2.1-2.1C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.4.5c-1.1.3-1.9 1.1-2.1 2.1C0 8.1 0 12 0 12s0 3.9.5 5.8c.2 1 1 1.8 2.1 2.1 1.9.5 9.4.5 9.4.5s7.5 0 9.4-.5c1.1-.3 1.9-1.1 2.1-2.1.5-1.9.5-5.8.5-5.8s0-3.9-.5-5.8zM9.5 15.6V8.4l6.3 3.6-6.3 3.6z" fill="#FF0000"/></svg>';
+            } else {
+                icon = '<svg class="icon" viewBox="0 0 24 24"><path d="M11.6 4.7h1.7v5.1h-1.7v-5.1zm4.7 0H18v5.1h-1.7v-5.1zM6 0L1.7 4.3v15.4h5.1V24l4.3-4.3h3.4L22.3 12V0H6zm14.6 11.1l-3.4 3.4h-3.4l-3 3v-3H6.9V1.7h13.7v9.4z" fill="#9146FF"/></svg>';
+            }
   
-              // Create badges HTML
-              let badgesHtml = '';
-              if (msg.badges && msg.badges.length > 0) {
-                  badgesHtml = '<span class="badges">';
-                  badgesHtml += msg.badges.map(badge => 
-                      \`<span class="badge" style="background-image: url('\${badge}')"></span>\`
-                  ).join('');
-                  badgesHtml += '</span>';
-              }
-              
-              // Create timestamp HTML
-              let timestampHtml = '';
-              if (msg.timestamp) {
-                  const timestamp = typeof msg.timestamp === 'string' ? msg.timestamp : new Date(msg.timestamp).toLocaleTimeString();
-                  timestampHtml = \`<span class="timestamp">\${timestamp}</span>\`;
-              }
-              
-              el.innerHTML = \`
-                  \${icon}
-                  <span class="name">\${msg.username}</span>: 
-                  \${badgesHtml}
-                  \${timestampHtml}
-                  <span class="content">\${msg.content}</span>
-              \`;
-              
-              // Fix emoji sizes
-              setTimeout(() => {
-                  fixEmojiSizes(el);
-              }, 0);
-              
-              // Set up a mutation observer to catch when emojis load
-              const observer = new MutationObserver(() => {
-                  fixEmojiSizes(el);
-                  
-                  // Only scroll if not manually scrolled up
-                  if (!userScrolled) {
-                      scrollDown();
-                  }
-              });
-              
-              // Observe the message for changes
-              observer.observe(el, {
-                  childList: true,
-                  subtree: true,
-                  attributes: true
-              });
-              
-              el.onclick = () => socket.emit('highlight-message', msg.id);
-              
-              chat.appendChild(el);
-              
-              const msgs = chat.getElementsByClassName('msg');
-              while (msgs.length > ${settings.messageLimit}) {
-                  chat.removeChild(msgs[0]);
-              }
-              
-              if (!userScrolled) scrollDown();
-          }
-      </script>
-  </body>
-  </html>`);
-  });
+            // Create badges HTML
+            let badgesHtml = '';
+            if (msg.badges && msg.badges.length > 0) {
+                badgesHtml = '<span class="badges">';
+                badgesHtml += msg.badges.map(badge => 
+                    \`<span class="badge" style="background-image: url('\${badge}')"></span>\`
+                ).join('');
+                badgesHtml += '</span>';
+            }
+            
+            // Create timestamp HTML
+            let timestampHtml = '';
+            if (msg.timestamp) {
+                const timestamp = typeof msg.timestamp === 'string' ? msg.timestamp : new Date(msg.timestamp).toLocaleTimeString();
+                timestampHtml = \`<span class="timestamp">\${timestamp}</span>\`;
+            }
+            
+            el.innerHTML = \`
+                \${icon}
+                <span class="name">\${msg.username}</span>: 
+                \${badgesHtml}
+                \${timestampHtml}
+                <span class="content">\${msg.content}</span>
+            \`;
+            
+            // Fix emoji sizes
+            setTimeout(() => {
+                fixEmojiSizes(el);
+            }, 0);
+            
+            // Set up a mutation observer to catch when emojis load
+            const observer = new MutationObserver(() => {
+                fixEmojiSizes(el);
+                
+                // Only scroll if not manually scrolled up
+                if (!userScrolled) {
+                    scrollDown();
+                }
+            });
+            
+            // Observe the message for changes
+            observer.observe(el, {
+                childList: true,
+                subtree: true,
+                attributes: true
+            });
+            
+            el.onclick = () => socket.emit('highlight-message', msg.id);
+            
+            chat.appendChild(el);
+            
+            const msgs = chat.getElementsByClassName('msg');
+            while (msgs.length > ${settings.messageLimit}) {
+                chat.removeChild(msgs[0]);
+            }
+            
+            if (!userScrolled) scrollDown();
+        }
+    </script>
+</body>
+</html>`);
+});
 
 // Add this to server.js - a dedicated endpoint for a simple, reliable chat display
 // OBS View Route
@@ -885,6 +941,16 @@ app.get('/obs-view', (req, res) => {
               width: auto !important;
               vertical-align: middle !important;
           }
+
+          .message-content a, #chat .content a {
+    color: ${settings.obsView.textColor} !important;
+    text-decoration: none !important;
+    pointer-events: none !important;
+}
+
+.message-content a:hover, #chat .content a:hover {
+    text-decoration: none !important;
+}
       </style>
   </head>
   <body class="${settings.obsView.theme}-theme">

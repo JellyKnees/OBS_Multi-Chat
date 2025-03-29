@@ -52,6 +52,8 @@ try {
 }
 
 // Home route - serve highlight HTML
+// Replace the entire HTML for the highlighted message with this improved version
+
 app.get('/', (req, res) => {
   res.send(`<!DOCTYPE html>
 <html lang="en">
@@ -85,6 +87,17 @@ app.get('/', (req, res) => {
             max-width: 80%;
             text-align: left;
             align-self: flex-end;
+            /* Table layout fixes both short and long message display */
+            display: none; /* Will be changed to table when visible */
+            table-layout: auto;
+        }
+        
+        .message-row {
+            display: table-row;
+        }
+        
+        .message-container {
+            display: table-cell;
         }
         
         .youtube .username {
@@ -92,7 +105,6 @@ app.get('/', (req, res) => {
             font-family: 'Inter', sans-serif !important;
             font-weight: bold !important;
             font-size: ${settings.fontSize + 4}px !important;
-            display: inline !important;
         }
         
         .twitch .username {
@@ -100,7 +112,6 @@ app.get('/', (req, res) => {
             font-family: 'Inter', sans-serif !important;
             font-weight: bold !important;
             font-size: ${settings.fontSize + 4}px !important;
-            display: inline !important;
         }
         
         .platform-icon {
@@ -118,10 +129,8 @@ app.get('/', (req, res) => {
             font-family: 'Inter', sans-serif !important;
             font-size: ${settings.fontSize + 2}px !important;
             line-height: 1.5;
-            display: inline !important;
-            /* Fix for long unbroken text */
-            word-wrap: break-word !important;
             overflow-wrap: break-word !important;
+            word-wrap: break-word !important;
             word-break: break-word !important;
         }
         
@@ -229,17 +238,20 @@ app.get('/', (req, res) => {
                 iconHtml = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="platform-icon"><path d="M11.571 4.714h1.715v5.143H11.57v-5.143zm4.715 0H18v5.143h-1.714v-5.143zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0H6zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714v9.429z" fill="#9146FF"/></svg>';
             }
             
+            // Create HTML with improved structure
             highlightedContainer.innerHTML = \`
-                <div class="message-content">
-                    \${iconHtml}
-                    <span class="username">\${message.username}</span>: 
-                    \${message.content || ''}
+                <div class="message-row">
+                    <div class="message-container">
+                        \${iconHtml}
+                        <span class="username">\${message.username}</span>: 
+                        <span class="message-content">\${message.content || ''}</span>
+                    </div>
                 </div>
             \`;
             
-            // Apply slide-in animation and show
+            // Apply slide-in animation and show - use table display
             highlightedContainer.style.animation = 'slideInFromRight 0.5s ease-in-out';
-            highlightedContainer.style.display = 'block';
+            highlightedContainer.style.display = 'table';
             
             // Add click handler to clear
             highlightedContainer.onclick = () => {
