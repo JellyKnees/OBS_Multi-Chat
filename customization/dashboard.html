@@ -367,6 +367,7 @@
         <button class="tab-button active" data-tab="obs-tab">OBS View</button>
         <button class="tab-button" data-tab="streamer-tab">Streamer View</button>
         <button class="tab-button" data-tab="common-tab">Common Settings</button>
+        <button class="tab-button" data-tab="chat-sources-tab">Chat Sources</button>
     </div>
 
     <div id="obs-tab" class="tab-content active">
@@ -574,6 +575,60 @@
             </div>
             <div class="form-group" style="margin-top: 10px;">
                 <button id="testSound" class="secondary-btn">Test Sound</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="chat-sources-tab" class="tab-content">
+        <div class="card">
+            <h2>Chat Sources</h2>
+            <p>Enter the channel URLs to connect directly to chat</p>
+            
+            <div class="settings-group">
+                <h3>YouTube</h3>
+                <div class="form-group">
+                    <label for="youtube-channel-url">YouTube Channel or Video URL:</label>
+                    <input type="text" id="youtube-channel-url" placeholder="https://www.youtube.com/watch?v=VIDEO_ID">
+                </div>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="youtube-enabled" checked>
+                    <label for="youtube-enabled">Enable YouTube Chat</label>
+                </div>
+                <div class="status-indicator">
+                    <div id="youtube-status-indicator" class="indicator disconnected"></div>
+                    <span>YouTube Status: <span id="youtube-status">Disconnected</span></span>
+                </div>
+            </div>
+            
+            <div class="settings-group">
+                <h3>Twitch</h3>
+                <div class="form-group">
+                    <label for="twitch-channel-name">Twitch Channel Name:</label>
+                    <input type="text" id="twitch-channel-name" placeholder="Enter channel name (without @)">
+                </div>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="twitch-enabled" checked>
+                    <label for="twitch-enabled">Enable Twitch Chat</label>
+                </div>
+                <div class="status-indicator">
+                    <div id="twitch-status-indicator" class="indicator disconnected"></div>
+                    <span>Twitch Status: <span id="twitch-status">Disconnected</span></span>
+                </div>
+            </div>
+            
+            <div class="form-group" style="margin-top: 20px;">
+                <label for="auth-notes">Authentication Notes:</label>
+                <textarea id="auth-notes" rows="3" readonly style="width: 100%; background-color: #333; color: #ddd; padding: 8px; border-radius: 4px;">For Twitch chat, no authentication is required for public channels. For YouTube, authentication is handled automatically via the YouTube API key.</textarea>
+            </div>
+            
+            <div class="form-group" style="margin-top: 20px;">
+                <label for="youtube-api-key">YouTube API Key:</label>
+                <input type="password" id="youtube-api-key" placeholder="Enter your YouTube API key">
+                <small style="display: block; margin-top: 5px; color: #aaa;">Get an API key from <a href="https://console.developers.google.com/" target="_blank">Google Developers Console</a></small>
+            </div>
+            
+            <div class="buttons">
+                <button id="connect-chat-sources">Connect</button>
             </div>
         </div>
     </div>

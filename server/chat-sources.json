@@ -1,0 +1,12 @@
+{
+  "twitch": {
+    "enabled": true,
+    "channelName": "darthmicrotransaction"
+  },
+  "youtube": {
+    "enabled": true,
+    "channelId": "",
+    "videoId": "TBmzdqbaOuY",
+    "apiKey": "AIzaSyDjAshTprPMSxgAbJIusj7SAez24VbbGVA"
+  }
+}

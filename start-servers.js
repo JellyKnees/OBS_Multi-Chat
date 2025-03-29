@@ -203,20 +203,22 @@ async function startAllServers() {
     
     // Display URLs for access
     console.log(`
-${colors.info}==========================================================
-  Multi-Platform Chat Overlay
-==========================================================
-
-  Add these URLs as Browser Sources in OBS:
-
-  ${colors.main}Main Chat Overlay: http://localhost:3000/obs-view${colors.info}
-  ${colors.highlight}Highlighted Messages: http://localhost:3001${colors.info}
-  ${colors.dashboard}Customization Dashboard: http://localhost:3002${colors.info}
-  ${colors.main}Streamer View: http://localhost:3000/streamer-view${colors.info}
-
-  Press [Ctrl+C] to stop all servers
-==========================================================${colors.reset}
-`);
+      ${colors.info}==========================================================
+        Multi-Platform Chat Overlay (Direct API Integration)
+      ==========================================================
+      
+        Add these URLs as Browser Sources in OBS:
+      
+        ${colors.main}Main Chat Overlay: http://localhost:3000/obs-view${colors.info}
+        ${colors.highlight}Highlighted Messages: http://localhost:3001${colors.info}
+        ${colors.dashboard}Customization Dashboard: http://localhost:3002${colors.info}
+        ${colors.main}Streamer View: http://localhost:3000/streamer-view${colors.info}
+      
+        ${colors.dashboard}Configure Chat Sources: http://localhost:3002/#chat-sources-tab${colors.info}
+      
+        Press [Ctrl+C] to stop all servers
+      ==========================================================${colors.reset}
+      `);
 
     // Track all running servers
     const servers = [

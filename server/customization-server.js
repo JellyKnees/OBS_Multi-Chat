@@ -16,9 +16,7 @@ const staticPath = path.join(__dirname, '..', 'customization');
 console.log('Serving static files from:', staticPath);
 app.use(express.static(staticPath));
 
-
 app.use('/audio', express.static(path.join(__dirname, '..', 'server', 'audio')));
-
 
 // Create HTTP server
 const server = http.createServer(app);
@@ -35,6 +33,28 @@ const dashboardIo = socketIo(server, {
 // Connect to the other servers as a client
 const mainSocket = io('http://localhost:3000');
 const highlightSocket = io('http://localhost:3001');
+
+// Initialize the chat integration
+const ChatIntegration = require('./chat-integration');
+const chatIntegration = new ChatIntegration();
+
+// Forward chat messages to all connected clients
+chatIntegration.on('chat-message', (message) => {
+  // Send to main server
+  if (mainConnected) {
+    mainSocket.emit('chat-message', message);
+    console.log(`Forwarded ${message.platform} message to main server`);
+  }
+  
+  // Also broadcast to all connected customization clients
+  dashboardIo.emit('chat-message', message);
+});
+
+// Forward status updates to all connected clients
+chatIntegration.on('status-updated', (status) => {
+  dashboardIo.emit('chat-source-status', status);
+  console.log('Broadcast chat source status update');
+});
 
 // Settings storage
 let settings = {
@@ -250,6 +270,34 @@ app.post('/api/settings', (req, res) => {
   res.json({ success: true });
 });
 
+// Chat sources API endpoint - get current status
+app.get('/api/chat-sources', (req, res) => {
+  console.log('GET /api/chat-sources - Sending status to client');
+  res.json(chatIntegration.getStatus());
+});
+
+// Chat sources API endpoint - update configuration
+app.post('/api/chat-sources', (req, res) => {
+  console.log('POST /api/chat-sources - Received configuration:', JSON.stringify(req.body, null, 2));
+  
+  // Validate configuration
+  if (!req.body || typeof req.body !== 'object') {
+    console.error('Invalid chat sources configuration object');
+    return res.status(400).json({ success: false, error: 'Invalid configuration object' });
+  }
+  
+  try {
+    // Update configuration and get current status
+    const status = chatIntegration.updateConfig(req.body);
+    
+    // Return success response with current status
+    res.json({ success: true, status });
+  } catch (error) {
+    console.error('Error updating chat sources configuration:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // Socket.IO connection handling
 dashboardIo.on('connection', (socket) => {
   console.log('Client connected to customization server:', socket.id);
@@ -288,7 +336,9 @@ dashboardIo.on('connection', (socket) => {
     // Send ONLY highlightTimeout to highlight server
     if (highlightConnected) {
       highlightSocket.emit('settings-updated', { 
-        highlightTimeout: settings.highlightTimeout 
+        highlightTimeout: settings.highlightTimeout,
+        enableSound: settings.enableSound,
+        soundVolume: settings.soundVolume
       });
     }
   });
@@ -298,6 +348,9 @@ dashboardIo.on('connection', (socket) => {
     console.log('Client disconnected from customization server:', socket.id);
   });
 });
+
+// Connect all enabled chat sources on server start
+chatIntegration.connectAll();
 
 // Start server
 const PORT = process.env.PORT || 3002;

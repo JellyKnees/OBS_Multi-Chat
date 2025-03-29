@@ -60,6 +60,20 @@ document.addEventListener('DOMContentLoaded', () => {
   const resetButton = getElement('resetSettings');
   const statusMessage = getElement('status-message');
 
+  // Chat sources elements
+  const youtubeUrlInput = getElement('youtube-channel-url');
+  const youtubeEnabledInput = getElement('youtube-enabled');
+  const youtubeStatusIndicator = getElement('youtube-status-indicator');
+  const youtubeStatus = getElement('youtube-status');
+  const youtubeApiKeyInput = getElement('youtube-api-key');
+
+  const twitchChannelInput = getElement('twitch-channel-name');
+  const twitchEnabledInput = getElement('twitch-enabled');
+  const twitchStatusIndicator = getElement('twitch-status-indicator');
+  const twitchStatus = getElement('twitch-status');
+
+  const connectChatButton = getElement('connect-chat-sources');
+
   // Create audio element for testing
   let testSound = null;
   function createAudioElement() {
@@ -197,6 +211,12 @@ document.addEventListener('DOMContentLoaded', () => {
       } else {
         console.error("Invalid settings update received:", receivedSettings);
       }
+    });
+
+    // Handle chat source status updates
+    socket.on('chat-source-status', (status) => {
+      console.log('Received chat source status update:', status);
+      updateChatSourceStatus(status);
     });
   }
 
@@ -426,6 +446,115 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 3000);
   }
   
+  // Update chat sources configuration and connections
+  function updateChatSources() {
+    const config = {
+      twitch: {
+        enabled: twitchEnabledInput ? twitchEnabledInput.checked : false,
+        channelName: twitchChannelInput ? twitchChannelInput.value.trim() : ''
+      },
+      youtube: {
+        enabled: youtubeEnabledInput ? youtubeEnabledInput.checked : false,
+        url: youtubeUrlInput ? youtubeUrlInput.value.trim() : '',
+        apiKey: youtubeApiKeyInput ? youtubeApiKeyInput.value.trim() : ''
+      }
+    };
+    
+    // Validate inputs
+    if (config.twitch.enabled && !config.twitch.channelName) {
+      showStatus('Twitch channel name is required', 'error');
+      return;
+    }
+    
+    if (config.youtube.enabled) {
+      if (!config.youtube.url) {
+        showStatus('YouTube channel or video URL is required', 'error');
+        return;
+      }
+      
+      if (!config.youtube.apiKey) {
+        showStatus('YouTube API key is required', 'error');
+        return;
+      }
+    }
+    
+    // Send configuration to server
+    fetch('/api/chat-sources', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(config)
+    })
+    .then(response => {
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+      return response.json();
+    })
+    .then(data => {
+      if (data.success) {
+        showStatus('Chat sources updated successfully', 'success');
+        updateChatSourceStatus(data.status);
+      } else {
+        showStatus('Error updating chat sources: ' + (data.error || 'Unknown error'), 'error');
+      }
+    })
+    .catch(error => {
+      console.error('Error updating chat sources:', error);
+      showStatus('Error updating chat sources: ' + error.message, 'error');
+    });
+  }
+
+  // Update chat source status indicators
+  function updateChatSourceStatus(status) {
+    if (!status) return;
+    
+    // Update Twitch status
+    if (status.twitch) {
+      if (twitchStatus) {
+        twitchStatus.textContent = status.twitch.connected ? 'Connected' : 'Disconnected';
+        
+        if (status.twitch.lastError) {
+          twitchStatus.textContent += ` (${status.twitch.lastError})`;
+        }
+      }
+      
+      if (twitchStatusIndicator) {
+        twitchStatusIndicator.classList.remove('connected', 'disconnected');
+        twitchStatusIndicator.classList.add(status.twitch.connected ? 'connected' : 'disconnected');
+      }
+      
+      if (twitchChannelInput && !twitchChannelInput.value && status.twitch.channelName) {
+        twitchChannelInput.value = status.twitch.channelName;
+      }
+      
+      if (twitchEnabledInput) {
+        twitchEnabledInput.checked = status.twitch.enabled;
+      }
+    }
+    
+    // Update YouTube status
+    if (status.youtube) {
+      if (youtubeStatus) {
+        youtubeStatus.textContent = status.youtube.connected ? 'Connected' : 'Disconnected';
+        
+        if (status.youtube.lastError) {
+          youtubeStatus.textContent += ` (${status.youtube.lastError})`;
+        }
+      }
+      
+      if (youtubeStatusIndicator) {
+        youtubeStatusIndicator.classList.remove('connected', 'disconnected');
+        youtubeStatusIndicator.classList.add(status.youtube.connected ? 'connected' : 'disconnected');
+      }
+      
+      if (youtubeEnabledInput) {
+        youtubeEnabledInput.checked = status.youtube.enabled;
+      }
+    }
+  }
+  
   // Set up event listeners only if elements exist
   // OBS View sliders
   if (obsFontSizeInput && obsFontSizeValue) {
@@ -505,19 +634,40 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // Connect chat sources button
+  if (connectChatButton) {
+    connectChatButton.addEventListener('click', () => {
+      updateChatSources();
+    });
+  }
+
   // Save settings
-  if (saveButton) {
-    saveButton.addEventListener('click', () => {
-      try {
-        const newSettings = getSettingsFromUI();
-        console.log('Saving settings:', JSON.stringify(newSettings, null, 2));
-        
-        // Send settings to server via Socket.IO
-        if (socket) {
-          socket.emit('update-settings', newSettings);
-        }
-        
-        // Also send via REST API for redundancy
+if (saveButton) {
+  saveButton.addEventListener('click', async () => {
+    try {
+      // Get current settings from UI
+      const newSettings = getSettingsFromUI();
+      console.log('Saving settings:', JSON.stringify(newSettings, null, 2));
+      
+      // Show "Saving..." message
+      showStatus('Saving settings...', 'info');
+      
+      // Send settings via both methods in parallel
+      const promises = [];
+      
+      // 1. Socket.IO method
+      if (socket && socket.connected) {
+        promises.push(
+          new Promise(resolve => {
+            socket.emit('update-settings', newSettings);
+            // Consider the socket emit successful
+            resolve();
+          })
+        );
+      }
+      
+      // 2. REST API method
+      promises.push(
         fetch('/api/settings', {
           method: 'POST',
           headers: {
@@ -531,99 +681,119 @@ document.addEventListener('DOMContentLoaded', () => {
           }
           return response.json();
         })
-        .then(data => {
-          if (data.success) {
-            showStatus('Settings saved successfully', 'success');
-          } else {
-            showStatus('Error saving settings: ' + (data.error || 'Unknown error'), 'error');
-          }
-        })
-        .catch(error => {
-          console.error('Error saving settings:', error);
-          showStatus('Error saving settings: ' + error.message, 'error');
-        });
-      } catch (error) {
-        console.error('Error preparing settings:', error);
-        showStatus('Error preparing settings: ' + error.message, 'error');
+      );
+      
+      // Wait for both methods to complete (or fail)
+      const results = await Promise.allSettled(promises);
+      
+      // Check if at least one method succeeded
+      const success = results.some(result => result.status === 'fulfilled');
+      
+      if (success) {
+        showStatus('Settings saved successfully', 'success');
+      } else {
+        // Get error from the REST API call if available
+        const error = results[results.length - 1].reason;
+        showStatus('Error saving settings: ' + (error?.message || 'Connection error'), 'error');
       }
-    });
-  }
-
-  // Reset to defaults
-  if (resetButton) {
-    resetButton.addEventListener('click', () => {
-      if (confirm('Are you sure you want to reset all settings to defaults?')) {
-        updateUIFromSettings(defaultSettings);
-        
-        // Send settings to server
-        fetch('/api/settings', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(defaultSettings)
-        })
-        .then(response => {
-          if (!response.ok) {
-            throw new Error(`HTTP error! Status: ${response.status}`);
-          }
-          return response.json();
-        })
-        .then(data => {
-          if (data.success) {
-            showStatus('Settings reset to defaults', 'success');
-          } else {
-            showStatus('Error resetting settings: ' + (data.error || 'Unknown error'), 'error');
-          }
-        })
-        .catch(error => {
-          console.error('Error resetting settings:', error);
-          showStatus('Error resetting settings: ' + error.message, 'error');
-        });
-      }
-    });
-  }
-
-  // Fetch current settings on load
-  fetch('/api/settings')
-  .then(response => {
-    if (!response.ok) {
-      throw new Error(`HTTP error! Status: ${response.status}`);
+    } catch (error) {
+      console.error('Error saving settings:', error);
+      showStatus('Error saving settings: ' + error.message, 'error');
     }
-    return response.json();
-  })
-  .then(fetchedSettings => {
-    console.log('Fetched initial settings:', fetchedSettings);
-    
-    // Validate the fetched settings
-    if (!fetchedSettings || typeof fetchedSettings !== 'object') {
-      console.error("Invalid settings object received from API:", fetchedSettings);
-      throw new Error("Invalid settings format");
-    }
-    
-    // Ensure streamerView exists
-    if (!fetchedSettings.streamerView) {
-      console.warn("No streamerView in fetched settings, creating it");
-      fetchedSettings.streamerView = {};
-    }
-    
-    // Check specifically for showMessageBackground
-    if (fetchedSettings.streamerView.showMessageBackground === undefined) {
-      console.warn("No showMessageBackground in fetched settings, using default");
-      fetchedSettings.streamerView.showMessageBackground = true;
-    } else {
-      console.log("showMessageBackground value from API:", 
-                  fetchedSettings.streamerView.showMessageBackground);
-    }
-    
-    // Update settings and UI
-    settings = fetchedSettings;
-    updateUIFromSettings(settings);
-  })
-  .catch(error => {
-    console.error('Error fetching settings:', error);
-    showStatus('Error fetching settings: ' + error.message, 'error');
-    // Fall back to defaults
-    updateUIFromSettings(defaultSettings);
   });
+}
+
+// Reset to defaults
+if (resetButton) {
+  resetButton.addEventListener('click', () => {
+    if (confirm('Are you sure you want to reset all settings to defaults?')) {
+      updateUIFromSettings(defaultSettings);
+      
+      // Send settings to server
+      fetch('/api/settings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(defaultSettings)
+      })
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        return response.json();
+      })
+      .then(data => {
+        if (data.success) {
+          showStatus('Settings reset to defaults', 'success');
+        } else {
+          showStatus('Error resetting settings: ' + (data.error || 'Unknown error'), 'error');
+        }
+      })
+      .catch(error => {
+        console.error('Error resetting settings:', error);
+        showStatus('Error resetting settings: ' + error.message, 'error');
+      });
+    }
+  });
+}
+
+// Fetch current settings on load
+fetch('/api/settings')
+.then(response => {
+  if (!response.ok) {
+    throw new Error(`HTTP error! Status: ${response.status}`);
+  }
+  return response.json();
+})
+.then(fetchedSettings => {
+  console.log('Fetched initial settings:', fetchedSettings);
+  
+  // Validate the fetched settings
+  if (!fetchedSettings || typeof fetchedSettings !== 'object') {
+    console.error("Invalid settings object received from API:", fetchedSettings);
+    throw new Error("Invalid settings format");
+  }
+  
+  // Ensure streamerView exists
+  if (!fetchedSettings.streamerView) {
+    console.warn("No streamerView in fetched settings, creating it");
+    fetchedSettings.streamerView = {};
+  }
+  
+  // Check specifically for showMessageBackground
+  if (fetchedSettings.streamerView.showMessageBackground === undefined) {
+    console.warn("No showMessageBackground in fetched settings, using default");
+    fetchedSettings.streamerView.showMessageBackground = true;
+  } else {
+    console.log("showMessageBackground value from API:", 
+                fetchedSettings.streamerView.showMessageBackground);
+  }
+  
+  // Update settings and UI
+  settings = fetchedSettings;
+  updateUIFromSettings(settings);
+})
+.catch(error => {
+  console.error('Error fetching settings:', error);
+  showStatus('Error fetching settings: ' + error.message, 'error');
+  // Fall back to defaults
+  updateUIFromSettings(defaultSettings);
+});
+
+// Fetch chat sources status on load
+fetch('/api/chat-sources')
+.then(response => {
+  if (!response.ok) {
+    throw new Error(`HTTP error! Status: ${response.status}`);
+  }
+  return response.json();
+})
+.then(data => {
+  console.log('Fetched chat sources status:', data);
+  updateChatSourceStatus(data);
+})
+.catch(error => {
+  console.error('Error fetching chat sources status:', error);
+});
 });

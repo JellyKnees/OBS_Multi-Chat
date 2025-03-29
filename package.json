@@ -1,6 +1,6 @@
 {
   "name": "obs-multi-chat-overlay",
-  "version": "1.0.0",
+  "version": "0.7.0",
   "main": "start-servers.js",
   "scripts": {
     "start": "node start-servers.js",
@@ -20,9 +20,11 @@
   "license": "ISC",
   "description": "A customizable chat overlay system that combines YouTube and Twitch chat messages into a single display for OBS",
   "dependencies": {
+    "axios": "^1.8.4",
     "cors": "^2.8.5",
     "express": "^4.21.2",
     "socket.io": "^4.8.1",
-    "socket.io-client": "^4.8.1"
+    "socket.io-client": "^4.8.1",
+    "tmi.js": "^1.8.5"
   }
 }
