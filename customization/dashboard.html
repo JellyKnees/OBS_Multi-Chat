@@ -559,6 +559,23 @@
                 <input type="color" id="highlightColor" value="#ff5500">
             </div>
         </div>
+        <div class="settings-group">
+            <h3>Highlight Sound</h3>
+            <div class="form-group">
+                <div class="checkbox-group">
+                    <input type="checkbox" id="enableSound" checked>
+                    <label for="enableSound">Play sound when message is highlighted</label>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="soundVolume">Sound Volume</label>
+                <input type="range" id="soundVolume" min="0" max="1" step="0.1" value="0.5">
+                <span id="soundVolumeValue" class="range-value">0.5</span>
+            </div>
+            <div class="form-group" style="margin-top: 10px;">
+                <button id="testSound" class="secondary-btn">Test Sound</button>
+            </div>
+        </div>
     </div>
 
     <div class="buttons">

@@ -51,10 +51,24 @@ document.addEventListener('DOMContentLoaded', () => {
   const highlightTimeoutInput = getElement('highlightTimeout');
   const highlightTimeoutValue = getElement('highlightTimeoutValue');
   const highlightColorInput = getElement('highlightColor');
+  const enableSoundInput = getElement('enableSound');
+  const soundVolumeInput = getElement('soundVolume');
+  const soundVolumeValue = getElement('soundVolumeValue');
+  const testSoundButton = getElement('testSound');
   
   const saveButton = getElement('saveSettings');
   const resetButton = getElement('resetSettings');
   const statusMessage = getElement('status-message');
+
+  // Create audio element for testing
+  let testSound = null;
+  function createAudioElement() {
+    if (!testSound) {
+      testSound = new Audio('/audio/whoosh.mp3');
+      testSound.preload = 'auto';
+      document.body.appendChild(testSound);
+    }
+  }
 
   // Get tab buttons
   const tabButtons = document.querySelectorAll('.tab-button');
@@ -84,6 +98,8 @@ document.addEventListener('DOMContentLoaded', () => {
     messageLimit: 50,
     highlightTimeout: 10000,
     highlightColor: "#ff5500",
+    enableSound: true,
+    soundVolume: 0.5,
     
     obsView: {
       fontSize: 16,
@@ -111,7 +127,8 @@ document.addEventListener('DOMContentLoaded', () => {
       chatHeight: "400px",
       enableDropShadow: true,
       showTimestamps: false,
-      showPlatforms: true
+      showPlatforms: true,
+      showMessageBackground: true
     }
   };
 
@@ -333,6 +350,20 @@ document.addEventListener('DOMContentLoaded', () => {
       highlightColorInput.value = settings.highlightColor || defaultSettings.highlightColor;
     }
     
+    // Update sound settings
+    if (enableSoundInput) {
+      enableSoundInput.checked = settings.enableSound !== undefined ? 
+        settings.enableSound : defaultSettings.enableSound;
+    }
+    
+    if (soundVolumeInput && soundVolumeValue) {
+      const volume = settings.soundVolume !== undefined ? 
+        settings.soundVolume : defaultSettings.soundVolume;
+      
+      soundVolumeInput.value = volume;
+      soundVolumeValue.textContent = volume;
+    }
+    
     // Reset all changed-value classes
     document.querySelectorAll('.changed-value').forEach(el => {
       el.classList.remove('changed-value');
@@ -345,6 +376,8 @@ document.addEventListener('DOMContentLoaded', () => {
       messageLimit: messageLimitInput ? parseInt(messageLimitInput.value) || defaultSettings.messageLimit : defaultSettings.messageLimit,
       highlightTimeout: highlightTimeoutInput ? parseInt(highlightTimeoutInput.value) * 1000 || defaultSettings.highlightTimeout : defaultSettings.highlightTimeout,
       highlightColor: highlightColorInput ? highlightColorInput.value || defaultSettings.highlightColor : defaultSettings.highlightColor,
+      enableSound: enableSoundInput ? enableSoundInput.checked : defaultSettings.enableSound,
+      soundVolume: soundVolumeInput ? parseFloat(soundVolumeInput.value) || defaultSettings.soundVolume : defaultSettings.soundVolume,
       
       obsView: {
         fontSize: obsFontSizeInput ? parseInt(obsFontSizeInput.value) || defaultSettings.obsView.fontSize : defaultSettings.obsView.fontSize,
@@ -448,6 +481,27 @@ document.addEventListener('DOMContentLoaded', () => {
   if (highlightTimeoutInput && highlightTimeoutValue) {
     highlightTimeoutInput.addEventListener('input', function() {
       highlightTimeoutValue.textContent = `${this.value}s`;
+    });
+  }
+
+  if (soundVolumeInput && soundVolumeValue) {
+    soundVolumeInput.addEventListener('input', function() {
+      soundVolumeValue.textContent = this.value;
+    });
+  }
+
+  if (testSoundButton) {
+    testSoundButton.addEventListener('click', () => {
+      createAudioElement();
+      if (testSound) {
+        const volume = soundVolumeInput ? parseFloat(soundVolumeInput.value) : 0.5;
+        testSound.volume = volume;
+        testSound.currentTime = 0; // Reset to beginning
+        testSound.play().catch(err => {
+          console.error("Error playing test sound:", err);
+          showStatus('Error playing test sound: ' + err.message, 'error');
+        });
+      }
     });
   }
 

@@ -38,6 +38,8 @@ let settings = {
   messageLimit: 50,
   highlightTimeout: 10000,
   highlightColor: "#ff5500",
+  enableSound: true,
+  soundVolume: 0.5,
   
   // OBS View specific settings
   obsView: {
@@ -229,12 +231,13 @@ app.post('/api/settings', (req, res) => {
     console.warn('Cannot send settings to main server - not connected');
   }
   
-  // Send ONLY highlightTimeout to highlight server
   if (highlightConnected) {
     highlightSocket.emit('settings-updated', { 
-      highlightTimeout: settings.highlightTimeout 
+      highlightTimeout: settings.highlightTimeout,
+      enableSound: settings.enableSound,
+      soundVolume: settings.soundVolume 
     });
-    console.log('Highlight timeout sent to highlight server');
+    console.log('Settings sent to highlight server (including sound settings)');
   } else {
     console.warn('Cannot send settings to highlight server - not connected');
   }

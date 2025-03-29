@@ -42,6 +42,8 @@ let settings = {
   messageLimit: 50,
   highlightTimeout: 10000,
   highlightColor: "#ff5500",
+  enableSound: true,
+  soundVolume: 0.5,
   
   // OBS View specific settings
   obsView: {
@@ -182,8 +184,10 @@ socket.on('settings-updated', (newSettings) => {
     
     // Forward ONLY the highlightTimeout to highlight server
     highlightSocket.emit('settings-updated', { 
-      highlightTimeout: settings.highlightTimeout 
-    });
+        highlightTimeout: settings.highlightTimeout,
+        enableSound: settings.enableSound,
+        soundVolume: settings.soundVolume 
+      });
   });
 
 // Handle disconnection

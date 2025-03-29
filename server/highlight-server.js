@@ -10,6 +10,9 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Serve static files from the 'public' directory
+app.use('/audio', express.static(path.join(__dirname, 'audio')));
+
 // Create HTTP server
 const server = http.createServer(app);
 
@@ -33,6 +36,8 @@ let settings = {
   
   // Functional customization
   highlightTimeout: 10000, // milliseconds
+  enableSound: true,       // Whether to play sound when highlighting
+  soundVolume: 0.5,        // Volume level (0-1)
 };
 
 // Load settings from file if exists
@@ -52,8 +57,6 @@ try {
 }
 
 // Home route - serve highlight HTML
-// Replace the entire HTML for the highlighted message with this improved version
-
 app.get('/', (req, res) => {
   res.send(`<!DOCTYPE html>
 <html lang="en">
@@ -178,23 +181,53 @@ app.get('/', (req, res) => {
         <!-- Highlighted message will be displayed here -->
     </div>
 
+    <!-- Audio element for the highlight sound -->
+    <audio id="highlight-sound" src="/audio/whoosh.mp3" preload="auto"></audio>
+
     <script src="/socket.io/socket.io.js"></script>
     <script>
         // Get the highlighted message container
         const highlightedContainer = document.getElementById('highlighted-message');
         
+        // Get the audio element
+        const highlightSound = document.getElementById('highlight-sound');
+        
         // Connect to Socket.IO
         const socket = io();
+        
+        // Current settings
+        let currentSettings = {
+            highlightTimeout: ${settings.highlightTimeout},
+            enableSound: ${settings.enableSound},
+            soundVolume: ${settings.soundVolume}
+        };
         
         // Handle settings updates
         socket.on('settings-updated', (newSettings) => {
             console.log('Received settings update:', newSettings);
-            // Only apply the highlight timeout setting
+            
+            // Update our settings
             if (newSettings.highlightTimeout !== undefined) {
-                // Update auto-dismiss timeout
-                if (dismissTimeout) {
-                    clearTimeout(dismissTimeout);
-                    dismissTimeout = null;
+                currentSettings.highlightTimeout = newSettings.highlightTimeout;
+            }
+            
+            if (newSettings.enableSound !== undefined) {
+                currentSettings.enableSound = newSettings.enableSound;
+            }
+            
+            if (newSettings.soundVolume !== undefined) {
+                currentSettings.soundVolume = newSettings.soundVolume;
+                highlightSound.volume = currentSettings.soundVolume;
+            }
+            
+            // Update auto-dismiss timeout if active
+            if (dismissTimeout) {
+                clearTimeout(dismissTimeout);
+                dismissTimeout = null;
+                
+                // If we still have a message showing, set up new timeout
+                if (highlightedContainer.style.display === 'table') {
+                    setupDismissTimeout();
                 }
             }
         });
@@ -212,10 +245,22 @@ app.get('/', (req, res) => {
                 element.style.fontSize = \`\${settings.fontSize + 2}px\`;
                 element.style.color = settings.textColor;
             });
+            
+            // Apply sound settings
+            highlightSound.volume = currentSettings.soundVolume;
         }
         
         // Auto-dismiss timeout - gets updated when settings change or new highlight appears
         let dismissTimeout = null;
+        
+        // Setup the dismiss timeout
+        function setupDismissTimeout() {
+            if (currentSettings.highlightTimeout > 0) {
+                dismissTimeout = setTimeout(() => {
+                    socket.emit('clear-highlight');
+                }, currentSettings.highlightTimeout);
+            }
+        }
         
         // Handle highlighted messages
         socket.on('highlight-message', (message) => {
@@ -225,6 +270,14 @@ app.get('/', (req, res) => {
             if (dismissTimeout) {
                 clearTimeout(dismissTimeout);
                 dismissTimeout = null;
+            }
+            
+            // Play sound if enabled
+            if (currentSettings.enableSound) {
+                highlightSound.volume = currentSettings.soundVolume;
+                highlightSound.play().catch(err => {
+                    console.error('Error playing sound:', err);
+                });
             }
             
             // Apply platform class
@@ -259,11 +312,7 @@ app.get('/', (req, res) => {
             };
             
             // Auto-clear after timeout (if enabled)
-            if (${settings.highlightTimeout} > 0) {
-                dismissTimeout = setTimeout(() => {
-                    socket.emit('clear-highlight');
-                }, ${settings.highlightTimeout});
-            }
+            setupDismissTimeout();
         });
         
         // Handle clearing highlighted message
@@ -299,6 +348,11 @@ io.on('connection', (socket) => {
   // Send current settings to client
   socket.emit('settings', settings);
   
+  // Get settings handler
+  socket.on('get-settings', () => {
+    socket.emit('settings', settings);
+  });
+  
   // Send current highlight if exists
   if (highlightedMessage) {
     socket.emit('highlight-message', highlightedMessage);
@@ -327,19 +381,28 @@ io.on('connection', (socket) => {
   
   // Handle settings update
   socket.on('settings-updated', (newSettings) => {
-    // ONLY accept and apply the highlightTimeout setting
+    // Apply the relevant settings for the highlight server
     if (newSettings.highlightTimeout !== undefined) {
       settings.highlightTimeout = newSettings.highlightTimeout;
-      console.log('Received highlight timeout update:', settings.highlightTimeout);
-      
-      // Broadcast ONLY the highlight timeout to clients
-      io.emit('settings-updated', { 
-        highlightTimeout: settings.highlightTimeout 
-      });
     }
     
-    // Explicitly ignore all other settings
-    console.log('Ignoring other settings, only accepting highlightTimeout');
+    // Handle new sound settings
+    if (newSettings.enableSound !== undefined) {
+      settings.enableSound = newSettings.enableSound;
+    }
+    
+    if (newSettings.soundVolume !== undefined) {
+      settings.soundVolume = newSettings.soundVolume;
+    }
+    
+    console.log('Updated highlight settings:', settings);
+    
+    // Broadcast updates to clients
+    io.emit('settings-updated', {
+      highlightTimeout: settings.highlightTimeout,
+      enableSound: settings.enableSound,
+      soundVolume: settings.soundVolume
+    });
   });
   
   // Handle disconnection
@@ -353,6 +416,13 @@ function clearHighlightMessage() {
   highlightedMessage = null;
   io.emit('clear-highlight');
   console.log('Highlight cleared');
+}
+
+// Make sure the audio directory exists
+const audioDir = path.join(__dirname, 'audio');
+if (!fs.existsSync(audioDir)) {
+  fs.mkdirSync(audioDir, { recursive: true });
+  console.log('Created audio directory:', audioDir);
 }
 
 // Export module functions and objects
