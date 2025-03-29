@@ -16,6 +16,10 @@ const staticPath = path.join(__dirname, '..', 'customization');
 console.log('Serving static files from:', staticPath);
 app.use(express.static(staticPath));
 
+
+app.use('/audio', express.static(path.join(__dirname, '..', 'server', 'audio')));
+
+
 // Create HTTP server
 const server = http.createServer(app);
 

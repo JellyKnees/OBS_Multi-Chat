@@ -2,6 +2,8 @@
   "messageLimit": 50,
   "highlightTimeout": 8000,
   "highlightColor": "#000000",
+  "enableSound": true,
+  "soundVolume": 1,
   "obsView": {
     "fontSize": 16,
     "textColor": "#ffffff",
