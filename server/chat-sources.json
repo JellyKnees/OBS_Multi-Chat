@@ -1,0 +1,12 @@
+{
+  "twitch": {
+    "enabled": true,
+    "channelName": "rocketleague"
+  },
+  "youtube": {
+    "enabled": true,
+    "channelId": null,
+    "videoId": null,
+    "channelUsername": null
+  }
+}
