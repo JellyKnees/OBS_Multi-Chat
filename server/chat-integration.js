@@ -284,56 +284,67 @@ class ChatIntegration extends EventEmitter {
         });
       
       // Listen for Twitch chat messages - improved badge handling
-this.sources.twitch.client.on('message', (channel, tags, message, self) => {
-    // Skip messages from the bot itself
-    if (self) return;
-    
-    // Check if the message is from before our connection time
-    const messageTimestamp = new Date(parseInt(tags['tmi-sent-ts']));
-    if (messageTimestamp < this.sources.twitch.connectionTimestamp) {
-      console.log(`Skipping historical Twitch message from ${tags['display-name']}`);
-      return;
-    }
-    
-    // Extract badge information - improved to handle more badge types
-    const badges = [];
-if (tags.badges) {
-  for (const [type, version] of Object.entries(tags.badges)) {
-    // Use a more direct approach with known badge URLs
-    if (type === 'broadcaster') {
-      badges.push('https://static-cdn.jtvnw.net/badges/v1/5527c58c-fb7d-422d-b71b-f309dcb85cc1/3');
-    } else if (type === 'moderator') {
-      badges.push('https://static-cdn.jtvnw.net/badges/v1/3267646d-33f0-4b17-b3df-f923a41db1d0/3');
-    } else if (type === 'subscriber') {
-      badges.push('https://static-cdn.jtvnw.net/badges/v1/5d9f2208-5dd8-11e7-8513-2ff4adfae661/3');
-    } else if (type === 'premium') {
-      badges.push('https://static-cdn.jtvnw.net/badges/v1/1711e5d4-5d4d-458e-b6b8-e2a895729d37/3');
-    } else if (type === 'vip') {
-      badges.push('https://static-cdn.jtvnw.net/badges/v1/b817aba4-fad8-49e2-b88a-7cc744dfa6ec/3');
-    } else {
-      // For other badges, log them to help debug
-      console.log(`Unknown badge type: ${type}, version: ${version}`);
-      // Use a fallback approach
-      badges.push(`https://static-cdn.jtvnw.net/badges/v1/${type}/3`);
-    }
-  }
-}
-    
-    // Create standardized message object
-    const chatMessage = {
-      platform: 'twitch',
-      username: tags['display-name'] || tags.username,
-      content: message,
-      color: tags.color || this.getColorFromUsername(tags.username),
-      badges: badges,
-      timestamp: messageTimestamp.toISOString(),
-      id: `twitch-${tags.id || Date.now()}-${Math.random().toString(36).substr(2, 9)}`
-    };
-    
-    // Emit message event
-    console.log(`Processing Twitch message from ${chatMessage.username} with ${badges.length} badges`);
-    this.emit('chat-message', chatMessage);
-  });
+      this.sources.twitch.client.on('message', (channel, tags, message, self) => {
+        // Skip messages from the bot itself
+        if (self) return;
+        
+        // Check if the message is from before our connection time
+        const messageTimestamp = new Date(parseInt(tags['tmi-sent-ts']));
+        if (messageTimestamp < this.sources.twitch.connectionTimestamp) {
+          console.log(`Skipping historical Twitch message from ${tags['display-name']}`);
+          return;
+        }
+        
+        // Extract badge information - improved for better handling
+        const badges = [];
+        if (tags.badges) {
+          for (const [type, version] of Object.entries(tags.badges)) {
+            // Use a more complete mapping for common badge types
+            const badgeMap = {
+              'broadcaster': 'https://static-cdn.jtvnw.net/badges/v1/5527c58c-fb7d-422d-b71b-f309dcb85cc1/3',
+              'moderator': 'https://static-cdn.jtvnw.net/badges/v1/3267646d-33f0-4b17-b3df-f923a41db1d0/3',
+              'vip': 'https://static-cdn.jtvnw.net/badges/v1/b817aba4-fad8-49e2-b88a-7cc744dfa6ec/3',
+              'subscriber': 'https://static-cdn.jtvnw.net/badges/v1/5d9f2208-5dd8-11e7-8513-2ff4adfae661/3',
+              'premium': 'https://static-cdn.jtvnw.net/badges/v1/1711e5d4-5d4d-458e-b6b8-e2a895729d37/3',
+              'partner': 'https://static-cdn.jtvnw.net/badges/v1/29f0e68e-2010-407a-a80a-5bc656928936/3',
+              'glhf-pledge': 'https://static-cdn.jtvnw.net/badges/v1/3158e758-3cb4-43c5-94b3-7639810451c5/3',
+              'bits': 'https://static-cdn.jtvnw.net/badges/v1/73b5c3fb-24f9-4a82-a852-2f475b59411c/3',
+              'bits-leader': 'https://static-cdn.jtvnw.net/badges/v1/8bedf8c3-7a6d-4df2-b62f-791b96a5dd31/3',
+              'turbo': 'https://static-cdn.jtvnw.net/badges/v1/6c549a3e-18a3-488b-b753-5728b6ed9b1d/3'
+            };
+            
+            // Check if we have a predefined badge URL
+            if (badgeMap[type]) {
+              badges.push(badgeMap[type]);
+            } else {
+              // For other badges, use a generic format with CDN
+              badges.push(`https://static-cdn.jtvnw.net/badges/v1/${type}/${version}/3`);
+              console.log(`Using fallback URL for badge type: ${type}, version: ${version}`);
+            }
+          }
+        }
+        
+        // Log badge information for debugging
+        console.log(`Twitch badges found for ${tags['display-name']}: ${badges.length}`);
+        badges.forEach((badge, index) => {
+          console.log(`Badge ${index+1}: ${badge}`);
+        });
+        
+        // Create standardized message object
+        const chatMessage = {
+          platform: 'twitch',
+          username: tags['display-name'] || tags.username,
+          content: message,
+          color: tags.color || this.getColorFromUsername(tags.username),
+          badges: badges,
+          timestamp: messageTimestamp.toISOString(),
+          id: `twitch-${tags.id || Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+        };
+        
+        // Emit message event
+        console.log(`Processing Twitch message from ${chatMessage.username} with ${badges.length} badges`);
+        this.emit('chat-message', chatMessage);
+      });
       
       // Listen for disconnection
       this.sources.twitch.client.on('disconnected', (reason) => {
