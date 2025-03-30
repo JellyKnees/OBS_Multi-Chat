@@ -108,8 +108,7 @@ class ChatIntegration extends EventEmitter {
         
       const youtubeChanged = 
         this.sources.youtube.enabled !== youtubeEnabled ||
-        config.youtube.url !== undefined ||
-        config.youtube.apiKey !== undefined;
+        config.youtube.url !== undefined;
       
       this.sources.youtube.enabled = youtubeEnabled;
       
@@ -122,12 +121,6 @@ class ChatIntegration extends EventEmitter {
         this.sources.youtube.liveChatId = null;
         
         this.processYouTubeUrl(config.youtube.url);
-      }
-      
-      // Update API key in environment variable if provided
-      if (config.youtube.apiKey) {
-        process.env.YOUTUBE_API_KEY = config.youtube.apiKey;
-        console.log('Updated YouTube API key in environment');
       }
       
       // Save configuration to file (API key excluded)

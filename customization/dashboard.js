@@ -65,7 +65,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const youtubeEnabledInput = getElement('youtube-enabled');
   const youtubeStatusIndicator = getElement('youtube-status-indicator');
   const youtubeStatus = getElement('youtube-status');
-  const youtubeApiKeyInput = getElement('youtube-api-key');
+  const youtubeApiStatus = getElement('youtube-api-status');
 
   const twitchChannelInput = getElement('twitch-channel-name');
   const twitchEnabledInput = getElement('twitch-enabled');
@@ -217,6 +217,22 @@ document.addEventListener('DOMContentLoaded', () => {
     socket.on('chat-source-status', (status) => {
       console.log('Received chat source status update:', status);
       updateChatSourceStatus(status);
+    });
+    
+    // Handle server status updates
+    socket.on('server-status', (status) => {
+      console.log('Received server status update:', status);
+      
+      // Update YouTube API key status
+      if (youtubeApiStatus) {
+        if (status.youtubeApiKeyConfigured) {
+          youtubeApiStatus.textContent = 'Configured in .env file';
+          youtubeApiStatus.style.color = '#4CAF50'; // Green color
+        } else {
+          youtubeApiStatus.textContent = 'Not configured in .env file';
+          youtubeApiStatus.style.color = '#f44336'; // Red color
+        }
+      }
     });
   }
 
@@ -455,8 +471,7 @@ document.addEventListener('DOMContentLoaded', () => {
       },
       youtube: {
         enabled: youtubeEnabledInput ? youtubeEnabledInput.checked : false,
-        url: youtubeUrlInput ? youtubeUrlInput.value.trim() : '',
-        apiKey: youtubeApiKeyInput ? youtubeApiKeyInput.value.trim() : ''
+        url: youtubeUrlInput ? youtubeUrlInput.value.trim() : ''
       }
     };
     
@@ -466,16 +481,9 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
     
-    if (config.youtube.enabled) {
-      if (!config.youtube.url) {
-        showStatus('YouTube channel or video URL is required', 'error');
-        return;
-      }
-      
-      if (!config.youtube.apiKey) {
-        showStatus('YouTube API key is required', 'error');
-        return;
-      }
+    if (config.youtube.enabled && !config.youtube.url) {
+      showStatus('YouTube channel or video URL is required', 'error');
+      return;
     }
     
     // Send configuration to server
@@ -551,6 +559,23 @@ document.addEventListener('DOMContentLoaded', () => {
       
       if (youtubeEnabledInput) {
         youtubeEnabledInput.checked = status.youtube.enabled;
+      }
+      
+      // Update API key status
+      if (youtubeApiStatus) {
+        if (status.youtube.apiKeyConfigured) {
+          youtubeApiStatus.textContent = 'Configured in .env file';
+          youtubeApiStatus.style.color = '#4CAF50'; // Green color
+        } else {
+          youtubeApiStatus.textContent = 'Not configured in .env file';
+          youtubeApiStatus.style.color = '#f44336'; // Red color
+          
+          // Disable YouTube checkbox if API key is not configured
+          if (youtubeEnabledInput && youtubeEnabledInput.checked) {
+            youtubeEnabledInput.checked = false;
+            showStatus('YouTube API key not configured in .env file. YouTube integration disabled.', 'error');
+          }
+        }
       }
     }
   }
@@ -642,38 +667,80 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Save settings
-if (saveButton) {
-  saveButton.addEventListener('click', async () => {
-    try {
-      // Get current settings from UI
-      const newSettings = getSettingsFromUI();
-      console.log('Saving settings:', JSON.stringify(newSettings, null, 2));
-      
-      // Show "Saving..." message
-      showStatus('Saving settings...', 'info');
-      
-      // Send settings via both methods in parallel
-      const promises = [];
-      
-      // 1. Socket.IO method
-      if (socket && socket.connected) {
+  if (saveButton) {
+    saveButton.addEventListener('click', async () => {
+      try {
+        // Get current settings from UI
+        const newSettings = getSettingsFromUI();
+        console.log('Saving settings:', JSON.stringify(newSettings, null, 2));
+        
+        // Show "Saving..." message
+        showStatus('Saving settings...', 'info');
+        
+        // Send settings via both methods in parallel
+        const promises = [];
+        
+        // 1. Socket.IO method
+        if (socket && socket.connected) {
+          promises.push(
+            new Promise(resolve => {
+              socket.emit('update-settings', newSettings);
+              // Consider the socket emit successful
+              resolve();
+            })
+          );
+        }
+        
+        // 2. REST API method
         promises.push(
-          new Promise(resolve => {
-            socket.emit('update-settings', newSettings);
-            // Consider the socket emit successful
-            resolve();
+          fetch('/api/settings', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(newSettings)
+          })
+          .then(response => {
+            if (!response.ok) {
+              throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+            return response.json();
           })
         );
+        
+        // Wait for both methods to complete (or fail)
+        const results = await Promise.allSettled(promises);
+        
+        // Check if at least one method succeeded
+        const success = results.some(result => result.status === 'fulfilled');
+        
+        if (success) {
+          showStatus('Settings saved successfully', 'success');
+        } else {
+          // Get error from the REST API call if available
+          const error = results[results.length - 1].reason;
+          showStatus('Error saving settings: ' + (error?.message || 'Connection error'), 'error');
+        }
+      } catch (error) {
+        console.error('Error saving settings:', error);
+        showStatus('Error saving settings: ' + error.message, 'error');
       }
-      
-      // 2. REST API method
-      promises.push(
+    });
+  }
+
+  // Reset to defaults
+  if (resetButton) {
+    resetButton.addEventListener('click', () => {
+      if (confirm('Are you sure you want to reset all settings to defaults?')) {
+        updateUIFromSettings(defaultSettings);
+        
+        // Send settings to server
         fetch('/api/settings', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify(newSettings)
+          body: JSON.stringify(defaultSettings)
         })
         .then(response => {
           if (!response.ok) {
@@ -681,119 +748,77 @@ if (saveButton) {
           }
           return response.json();
         })
-      );
-      
-      // Wait for both methods to complete (or fail)
-      const results = await Promise.allSettled(promises);
-      
-      // Check if at least one method succeeded
-      const success = results.some(result => result.status === 'fulfilled');
-      
-      if (success) {
-        showStatus('Settings saved successfully', 'success');
-      } else {
-        // Get error from the REST API call if available
-        const error = results[results.length - 1].reason;
-        showStatus('Error saving settings: ' + (error?.message || 'Connection error'), 'error');
+        .then(data => {
+          if (data.success) {
+            showStatus('Settings reset to defaults', 'success');
+          } else {
+            showStatus('Error resetting settings: ' + (data.error || 'Unknown error'), 'error');
+          }
+        })
+        .catch(error => {
+          console.error('Error resetting settings:', error);
+          showStatus('Error resetting settings: ' + error.message, 'error');
+        });
       }
-    } catch (error) {
-      console.error('Error saving settings:', error);
-      showStatus('Error saving settings: ' + error.message, 'error');
-    }
-  });
-}
+    });
+  }
 
-// Reset to defaults
-if (resetButton) {
-  resetButton.addEventListener('click', () => {
-    if (confirm('Are you sure you want to reset all settings to defaults?')) {
-      updateUIFromSettings(defaultSettings);
-      
-      // Send settings to server
-      fetch('/api/settings', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(defaultSettings)
-      })
-      .then(response => {
-        if (!response.ok) {
-          throw new Error(`HTTP error! Status: ${response.status}`);
-        }
-        return response.json();
-      })
-      .then(data => {
-        if (data.success) {
-          showStatus('Settings reset to defaults', 'success');
-        } else {
-          showStatus('Error resetting settings: ' + (data.error || 'Unknown error'), 'error');
-        }
-      })
-      .catch(error => {
-        console.error('Error resetting settings:', error);
-        showStatus('Error resetting settings: ' + error.message, 'error');
-      });
+  // Fetch current settings on load
+  fetch('/api/settings')
+  .then(response => {
+    if (!response.ok) {
+      throw new Error(`HTTP error! Status: ${response.status}`);
     }
-  });
-}
-
-// Fetch current settings on load
-fetch('/api/settings')
-.then(response => {
-  if (!response.ok) {
-    throw new Error(`HTTP error! Status: ${response.status}`);
-  }
-  return response.json();
-})
-.then(fetchedSettings => {
-  console.log('Fetched initial settings:', fetchedSettings);
-  
-  // Validate the fetched settings
-  if (!fetchedSettings || typeof fetchedSettings !== 'object') {
-    console.error("Invalid settings object received from API:", fetchedSettings);
-    throw new Error("Invalid settings format");
-  }
-  
-  // Ensure streamerView exists
-  if (!fetchedSettings.streamerView) {
-    console.warn("No streamerView in fetched settings, creating it");
-    fetchedSettings.streamerView = {};
-  }
-  
-  // Check specifically for showMessageBackground
-  if (fetchedSettings.streamerView.showMessageBackground === undefined) {
-    console.warn("No showMessageBackground in fetched settings, using default");
-    fetchedSettings.streamerView.showMessageBackground = true;
-  } else {
-    console.log("showMessageBackground value from API:", 
+    return response.json();
+  })
+  .then(fetchedSettings => {
+    console.log('Fetched initial settings:', fetchedSettings);
+    
+    // Validate the fetched settings
+    if (!fetchedSettings || typeof fetchedSettings !== 'object') {
+      console.error("Invalid settings object received from API:", fetchedSettings);
+      throw new Error("Invalid settings format");
+    }
+    
+    // Ensure streamerView exists
+    if (!fetchedSettings.streamerView) {
+      console.warn("No streamerView in fetched settings, creating it");
+      fetchedSettings.streamerView = {};
+    }
+    
+    // Check specifically for showMessageBackground
+    if (fetchedSettings.streamerView.showMessageBackground === undefined) {
+      console.warn("No showMessageBackground in fetched settings, using default");
+      fetchedSettings.streamerView.showMessageBackground = true;
+    } else {
+      console.log("showMessageBackground value from API:", 
                 fetchedSettings.streamerView.showMessageBackground);
-  }
-  
-  // Update settings and UI
-  settings = fetchedSettings;
-  updateUIFromSettings(settings);
-})
-.catch(error => {
-  console.error('Error fetching settings:', error);
-  showStatus('Error fetching settings: ' + error.message, 'error');
-  // Fall back to defaults
-  updateUIFromSettings(defaultSettings);
-});
+    }
+    
+    // Update settings and UI
+    settings = fetchedSettings;
+    updateUIFromSettings(settings);
+  })
+  .catch(error => {
+    console.error('Error fetching settings:', error);
+    showStatus('Error fetching settings: ' + error.message, 'error');
+    // Fall back to defaults
+    updateUIFromSettings(defaultSettings);
+  });
 
-// Fetch chat sources status on load
-fetch('/api/chat-sources')
-.then(response => {
-  if (!response.ok) {
-    throw new Error(`HTTP error! Status: ${response.status}`);
-  }
-  return response.json();
-})
-.then(data => {
-  console.log('Fetched chat sources status:', data);
-  updateChatSourceStatus(data);
-})
-.catch(error => {
-  console.error('Error fetching chat sources status:', error);
-});
+  // Fetch chat sources status on load
+  fetch('/api/chat-sources')
+  .then(response => {
+    if (!response.ok) {
+      throw new Error(`HTTP error! Status: ${response.status}`);
+    }
+    return response.json();
+  })
+  .then(data => {
+    console.log('Fetched chat sources status:', data);
+    updateChatSourceStatus(data);
+  })
+  .catch(error => {
+    console.error('Error fetching chat sources status:', error);
+  });
 });

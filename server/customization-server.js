@@ -5,6 +5,7 @@ const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
 const io = require('socket.io-client');
+require('dotenv').config(); // Ensure dotenv is loaded
 
 // Initialize Express app for customization dashboard
 const app = express();
@@ -273,7 +274,10 @@ app.post('/api/settings', (req, res) => {
 // Chat sources API endpoint - get current status
 app.get('/api/chat-sources', (req, res) => {
   console.log('GET /api/chat-sources - Sending status to client');
-  res.json(chatIntegration.getStatus());
+  // Include a flag to indicate if YouTube API key is configured in .env
+  const status = chatIntegration.getStatus();
+  status.youtube.apiKeyConfigured = !!process.env.YOUTUBE_API_KEY;
+  res.json(status);
 });
 
 // Chat sources API endpoint - update configuration
@@ -287,8 +291,28 @@ app.post('/api/chat-sources', (req, res) => {
   }
   
   try {
+    // Create a copy of the request body
+    const config = { ...req.body };
+    
+    // For YouTube, use the API key from .env file instead of the request
+    if (config.youtube) {
+      // Skip setting the API key from user input
+      delete config.youtube.apiKey;
+      
+      // Check if YouTube API key exists in .env
+      if (!process.env.YOUTUBE_API_KEY && config.youtube.enabled) {
+        return res.status(400).json({ 
+          success: false, 
+          error: 'YouTube API key not configured in .env file. Please add YOUTUBE_API_KEY to your .env file.' 
+        });
+      }
+    }
+    
     // Update configuration and get current status
-    const status = chatIntegration.updateConfig(req.body);
+    const status = chatIntegration.updateConfig(config);
+    
+    // Add flag to indicate if YouTube API key is configured
+    status.youtube.apiKeyConfigured = !!process.env.YOUTUBE_API_KEY;
     
     // Return success response with current status
     res.json({ success: true, status });
@@ -308,7 +332,8 @@ dashboardIo.on('connection', (socket) => {
   // Send connection statuses
   socket.emit('server-status', { 
     main: mainConnected,
-    highlight: highlightConnected
+    highlight: highlightConnected,
+    youtubeApiKeyConfigured: !!process.env.YOUTUBE_API_KEY
   });
   
   // Handle settings update from client via Socket.IO
@@ -356,4 +381,12 @@ chatIntegration.connectAll();
 const PORT = process.env.PORT || 3002;
 server.listen(PORT, () => {
   console.log(`Customization dashboard running on http://localhost:${PORT}`);
+  
+  // Log YouTube API key status
+  if (process.env.YOUTUBE_API_KEY) {
+    console.log('YouTube API key found in environment variables');
+  } else {
+    console.log('WARNING: YouTube API key not found in environment variables. YouTube integration will be disabled.');
+    console.log('Add YOUTUBE_API_KEY=your_api_key to your .env file to enable YouTube integration.');
+  }
 });

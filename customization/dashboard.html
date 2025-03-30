@@ -329,6 +329,34 @@
             color: #4CAF50; /* Green color for changed values */
             font-weight: bold;
         }
+        
+        .status-indicator {
+            margin-top: 10px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        .connected {
+            background-color: #4CAF50;
+        }
+        
+        .disconnected {
+            background-color: #F44336;
+        }
+        
+        .api-key-status {
+            margin-top: 10px;
+            padding: 8px;
+            border-radius: 4px;
+            background-color: rgba(0, 0, 0, 0.2);
+        }
     </style>
 </head>
 
@@ -598,6 +626,13 @@
                     <div id="youtube-status-indicator" class="indicator disconnected"></div>
                     <span>YouTube Status: <span id="youtube-status">Disconnected</span></span>
                 </div>
+                <div class="api-key-status">
+                    <p>YouTube API Key: <span id="youtube-api-status">Checking...</span></p>
+                    <small style="display: block; margin-top: 5px; color: #aaa;">
+                        The YouTube API key should be configured in your .env file as YOUTUBE_API_KEY=your_key_here.
+                        Get an API key from <a href="https://console.developers.google.com/" target="_blank">Google Developers Console</a>
+                    </small>
+                </div>
             </div>
             
             <div class="settings-group">
@@ -618,13 +653,7 @@
             
             <div class="form-group" style="margin-top: 20px;">
                 <label for="auth-notes">Authentication Notes:</label>
-                <textarea id="auth-notes" rows="3" readonly style="width: 100%; background-color: #333; color: #ddd; padding: 8px; border-radius: 4px;">For Twitch chat, no authentication is required for public channels. For YouTube, authentication is handled automatically via the YouTube API key.</textarea>
-            </div>
-            
-            <div class="form-group" style="margin-top: 20px;">
-                <label for="youtube-api-key">YouTube API Key:</label>
-                <input type="password" id="youtube-api-key" placeholder="Enter your YouTube API key">
-                <small style="display: block; margin-top: 5px; color: #aaa;">Get an API key from <a href="https://console.developers.google.com/" target="_blank">Google Developers Console</a></small>
+                <textarea id="auth-notes" rows="3" readonly style="width: 100%; background-color: #333; color: #ddd; padding: 8px; border-radius: 4px;">For Twitch chat, no authentication is required for public channels. For YouTube, authentication is handled automatically via the YouTube API key in your .env file.</textarea>
             </div>
             
             <div class="buttons">
