@@ -1,12 +1,12 @@
 {
   "twitch": {
     "enabled": true,
-    "channelName": "darthmicrotransaction"
+    "channelName": "summit1g"
   },
   "youtube": {
     "enabled": true,
-    "channelId": "",
-    "videoId": "TBmzdqbaOuY",
+    "channelId": null,
+    "videoId": null,
     "apiKey": "AIzaSyDjAshTprPMSxgAbJIusj7SAez24VbbGVA"
   }
 }

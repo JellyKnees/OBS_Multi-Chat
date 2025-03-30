@@ -69,8 +69,9 @@ body {
 .message-header {
     display: flex;
     align-items: center;
+    flex-direction: row;
     margin-bottom: 4px;
-}
+  }
 
 .platform-icon {
     width: 16px;
@@ -79,6 +80,7 @@ body {
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    order: 1;
 }
 
 .platform-icon img {
@@ -92,6 +94,7 @@ body {
     margin-right: 8px !important;
     font-family: 'Inter', sans-serif !important;
     font-size: 14px !important;
+    order: 3;
 }
 
 /* Platform-specific username colors */
@@ -118,21 +121,21 @@ body {
     margin-left: auto;
 }
 
+/* Badge styling */
 .badges {
-    display: flex;
+    display: inline-flex;
     align-items: center;
     margin-right: 6px;
-}
-
-.badge {
+    order: 2;
+  }
+  
+  .badge {
     display: inline-block;
     width: 18px;
     height: 18px;
     margin-right: 4px;
-    background-size: contain;
-    background-repeat: no-repeat;
-    background-position: center;
-}
+    vertical-align: middle;
+  }
 
 .message-content {
     color: white !important;

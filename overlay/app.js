@@ -119,38 +119,59 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     // Function to add a chat message
-    function addChatMessage(message) {
-        const messageElement = document.createElement('div');
-        messageElement.classList.add('chat-message');
-        messageElement.classList.add(message.platform.toLowerCase());
-        messageElement.dataset.id = message.id;
+// Function to add a chat message
+function addChatMessage(message) {
+    const messageElement = document.createElement('div');
+    messageElement.classList.add('chat-message');
+    messageElement.classList.add(message.platform.toLowerCase());
+    messageElement.dataset.id = message.id;
+    
+    // Create the message header container
+    const messageHeader = document.createElement('div');
+    messageHeader.className = 'message-header';
+    
+    // Add platform icon
+    const platformIcon = document.createElement('span');
+    platformIcon.className = 'platform-icon';
+    messageHeader.appendChild(platformIcon);
+    
+    // Add badges BEFORE username (creating as actual elements)
+    if (message.badges && message.badges.length > 0) {
+        const badgesContainer = document.createElement('div');
+        badgesContainer.className = 'badges';
         
-        // Create badges HTML
-        let badgesHtml = '';
-        if (message.badges && message.badges.length > 0) {
-            badgesHtml = '<div class="badges">';
-            badgesHtml += message.badges.map(badge => 
-                `<span class="badge" style="background-image: url('${badge}')"></span>`
-            ).join('');
-            badgesHtml += '</div>';
-        }
-        
-        // Create message content
-        messageElement.innerHTML = `
-            <div class="message-header">
-                <span class="platform-icon"></span>
-                <span class="username">${message.username}</span>
-                ${badgesHtml}
-            </div>
-            <div class="message-content">${message.content}</div>
-        `;
-        
-        // Add click event to highlight message
-        messageElement.addEventListener('click', () => {
-            socket.emit('highlight-message', message.id);
+        message.badges.forEach(badge => {
+            const badgeImg = document.createElement('img');
+            badgeImg.className = 'badge';
+            badgeImg.src = badge;
+            badgeImg.alt = 'Badge';
+            badgesContainer.appendChild(badgeImg);
         });
         
-        // Add to chat container
+        messageHeader.appendChild(badgesContainer);
+    }
+    
+    // Add username AFTER badges
+    const usernameSpan = document.createElement('span');
+    usernameSpan.className = 'username';
+    usernameSpan.textContent = message.username;
+    messageHeader.appendChild(usernameSpan);
+    
+    // Create message content
+    const contentDiv = document.createElement('div');
+    contentDiv.className = 'message-content';
+    contentDiv.innerHTML = message.content;
+    
+    // Add all elements to the message
+    messageElement.appendChild(messageHeader);
+    messageElement.appendChild(contentDiv);
+    
+    // Add click event to highlight message
+    messageElement.addEventListener('click', () => {
+        socket.emit('highlight-message', message.id);
+    });
+    
+    // Add to chat container
     chatContainer.appendChild(messageElement);
     
     // Keep only the last 50 messages in the DOM
@@ -159,37 +180,9 @@ document.addEventListener('DOMContentLoaded', () => {
         chatContainer.removeChild(messages[0]);
     }
     
-    // Clear chat container if there are more than 50 messages
-    if (messages.length > 50) {
-        // Remove all messages and re-add only the last 50
-        while (chatContainer.firstChild) {
-            chatContainer.removeChild(chatContainer.firstChild);
-        }
-        
-        // Get the last 50 messages from the backend
-        const lastMessages = chatMessages.slice(-50);
-        lastMessages.forEach(msg => addMessage(msg));
+    // Auto-scroll if not manually scrolled up
+    if (!userScrolled) {
+        scrollToBottom();
     }
-    
-        
-        // Set up a mutation observer to catch emoji rendering
-        const messageObserver = new MutationObserver(() => {
-            if (!userScrolled) {
-                chatContainer.scrollTop = chatContainer.scrollHeight;
-            }
-        });
-        
-        // Observe the message element for changes
-        messageObserver.observe(messageElement, {
-            subtree: true,
-            childList: true,
-            characterData: true,
-            attributes: true
-        });
-        
-        // Auto-scroll if not manually scrolled up
-        if (!userScrolled) {
-            scrollToBottom();
-        }
-    }
+}
 });
