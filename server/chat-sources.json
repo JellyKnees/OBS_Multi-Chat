@@ -1,12 +1,13 @@
 {
   "twitch": {
     "enabled": true,
-    "channelName": "summit1g"
+    "channelName": "rocketleague"
   },
   "youtube": {
     "enabled": true,
     "channelId": null,
     "videoId": null,
+    "channelUsername": null,
     "apiKey": "AIzaSyDjAshTprPMSxgAbJIusj7SAez24VbbGVA"
   }
 }

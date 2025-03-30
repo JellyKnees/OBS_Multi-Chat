@@ -5,7 +5,7 @@
   "enableSound": true,
   "soundVolume": 1,
   "obsView": {
-    "fontSize": 16,
+    "fontSize": 22,
     "textColor": "#ffffff",
     "backgroundColor": "#000000",
     "messageBackgroundColor": "#222222",
@@ -13,7 +13,7 @@
     "messageBorderRadius": 4,
     "messagePadding": 4,
     "chatWidth": "100%",
-    "chatHeight": "400px",
+    "chatHeight": "1064px",
     "enableDropShadow": true,
     "theme": "dark",
     "showBadges": true,

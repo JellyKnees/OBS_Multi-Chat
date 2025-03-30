@@ -1,9 +1,9 @@
-// server/chat-integration.js
 const { EventEmitter } = require('events');
-const tmi = require('tmi.js'); // For Twitch chat
+const tmi = require('tmi.js');
 const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
+require('dotenv').config();
 
 class ChatIntegration extends EventEmitter {
   constructor() {
@@ -33,19 +33,16 @@ class ChatIntegration extends EventEmitter {
     this.loadConfig();
   }
   
-  // Load configuration from file
   loadConfig() {
     try {
       if (fs.existsSync(this.configFile)) {
         const config = JSON.parse(fs.readFileSync(this.configFile, 'utf8'));
         
-        // Update Twitch config
         if (config.twitch) {
           this.sources.twitch.enabled = config.twitch.enabled || false;
           this.sources.twitch.channelName = config.twitch.channelName || '';
         }
         
-        // Update YouTube config
         if (config.youtube) {
           this.sources.youtube.enabled = config.youtube.enabled || false;
           this.sources.youtube.channelId = config.youtube.channelId || '';
@@ -63,10 +60,8 @@ class ChatIntegration extends EventEmitter {
     }
   }
   
-  // Save configuration to file
   saveConfig() {
     try {
-      // Create a sanitized config (without clients/connections)
       const config = {
         twitch: {
           enabled: this.sources.twitch.enabled,
@@ -76,6 +71,7 @@ class ChatIntegration extends EventEmitter {
           enabled: this.sources.youtube.enabled,
           channelId: this.sources.youtube.channelId,
           videoId: this.sources.youtube.videoId,
+          channelUsername: this.sources.youtube.channelUsername,
           apiKey: this.sources.youtube.apiKey
         }
       };
@@ -87,7 +83,6 @@ class ChatIntegration extends EventEmitter {
     }
   }
   
-  // Get current status of all chat sources
   getStatus() {
     return {
       twitch: {
@@ -106,18 +101,17 @@ class ChatIntegration extends EventEmitter {
     };
   }
   
-  // Update configuration
   updateConfig(config) {
     // Update YouTube config
     if (config.youtube) {
       const youtubeChanged = 
         this.sources.youtube.enabled !== config.youtube.enabled ||
-        config.youtube.url !== undefined || // URL changed
+        config.youtube.url !== undefined ||
         this.sources.youtube.apiKey !== config.youtube.apiKey;
       
       this.sources.youtube.enabled = config.youtube.enabled;
       
-      // Process YouTube URL if provided, with proper resetting of previous values
+      // Process YouTube URL if provided
       if (config.youtube.url) {
         // Reset all previous IDs whenever a new URL is provided
         this.sources.youtube.channelId = null;
@@ -125,7 +119,6 @@ class ChatIntegration extends EventEmitter {
         this.sources.youtube.channelUsername = null;
         this.sources.youtube.liveChatId = null;
         
-        // Process the new URL
         this.processYouTubeUrl(config.youtube.url);
       }
       
@@ -133,6 +126,9 @@ class ChatIntegration extends EventEmitter {
       if (config.youtube.apiKey) {
         this.sources.youtube.apiKey = config.youtube.apiKey;
       }
+      
+      // Save configuration to file
+      this.saveConfig();
       
       // Reconnect if needed
       if (youtubeChanged) {
@@ -145,7 +141,6 @@ class ChatIntegration extends EventEmitter {
       }
     }
     
-    // Update Twitch config (keep existing code for Twitch)
     if (config.twitch) {
       const twitchChanged = 
         this.sources.twitch.enabled !== config.twitch.enabled ||
@@ -154,7 +149,6 @@ class ChatIntegration extends EventEmitter {
       this.sources.twitch.enabled = config.twitch.enabled;
       this.sources.twitch.channelName = config.twitch.channelName;
       
-      // Reconnect if needed
       if (twitchChanged) {
         if (this.sources.twitch.enabled && this.sources.twitch.channelName) {
           this.connectTwitch();
@@ -164,39 +158,14 @@ class ChatIntegration extends EventEmitter {
       }
     }
     
-    // Save the updated configuration
     this.saveConfig();
-    
-    // Return current status
     return this.getStatus();
   }
 
-  // Add this new method here
-  getTwitchBadgeId(type, version) {
-    // Common badge IDs mapping
-    const badgeIds = {
-      'broadcaster': '5527c58c-fb7d-422d-b71b-f309dcb85cc1',
-      'moderator': '3267646d-33f0-4b17-b3df-f923a41db1d0',
-      'vip': 'b817aba4-fad8-49e2-b88a-7cc744dfa6ec',
-      'subscriber': '5d9f2208-5dd8-11e7-8513-2ff4adfae661',
-      'premium': 'premium/1',
-      'partner': '29f0e68e-2010-407a-a80a-5bc656928936',
-      'glhf-pledge': '3158e758-3cb4-43c5-94b3-7639810451c5',
-      'bits': 'bits',
-      'bits-leader': 'bits-leader',
-      'turbo': '6c549a3e-18a3-488b-b753-5728b6ed9b1d'
-    };
-    
-    // Return the mapped ID if available, or fall back to a generic format
-    return badgeIds[type] || `${type}/${version}`;
-  }
-  
-  // Also enhance the processYouTubeUrl function to handle @username URLs better
   processYouTubeUrl(url) {
     try {
       console.log(`Processing YouTube URL: ${url}`);
       
-      // Check if it's a live chat popup URL
       const liveChatMatch = url.match(/youtube\.com\/live_chat.*[?&]v=([^&]+)/);
       if (liveChatMatch && liveChatMatch[1]) {
         this.sources.youtube.videoId = liveChatMatch[1];
@@ -204,7 +173,6 @@ class ChatIntegration extends EventEmitter {
         return;
       }
       
-      // Check if it's a video URL
       const videoIdMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\?]+)/);
       if (videoIdMatch && videoIdMatch[1]) {
         this.sources.youtube.videoId = videoIdMatch[1];
@@ -212,7 +180,6 @@ class ChatIntegration extends EventEmitter {
         return;
       }
       
-      // Check if it's a custom channel URL (@username format)
       const atUsernameMatch = url.match(/(?:youtube\.com\/@)([^\/\?]+)/);
       if (atUsernameMatch && atUsernameMatch[1]) {
         this.sources.youtube.channelUsername = atUsernameMatch[1];
@@ -220,7 +187,6 @@ class ChatIntegration extends EventEmitter {
         return;
       }
       
-      // Check if it's a standard channel URL
       const channelIdMatch = url.match(/(?:youtube\.com\/channel\/)([^\/\?]+)/);
       if (channelIdMatch && channelIdMatch[1]) {
         this.sources.youtube.channelId = channelIdMatch[1];
@@ -228,7 +194,6 @@ class ChatIntegration extends EventEmitter {
         return;
       }
       
-      // Check if it's a user URL (c/ or user/ format)
       const usernameMatch = url.match(/(?:youtube\.com\/)(?:c\/|user\/)([^\/\?]+)/);
       if (usernameMatch && usernameMatch[1]) {
         this.sources.youtube.channelUsername = usernameMatch[1];
@@ -241,9 +206,56 @@ class ChatIntegration extends EventEmitter {
       console.error(`Error processing YouTube URL: ${error.message}`);
     }
   }
+
+  async refreshTwitchToken() {
+    try {
+      const response = await axios.post('https://id.twitch.tv/oauth2/token', null, {
+        params: {
+          grant_type: 'refresh_token',
+          refresh_token: process.env.TWITCH_REFRESH_TOKEN,
+          client_id: process.env.TWITCH_CLIENT_ID,
+          client_secret: process.env.TWITCH_CLIENT_SECRET
+        }
+      });
   
-  // Connect to Twitch chat
-  connectTwitch() {
+      // Update environment variables with new tokens
+      process.env.TWITCH_ACCESS_TOKEN = response.data.access_token;
+      process.env.TWITCH_REFRESH_TOKEN = response.data.refresh_token;
+  
+      // Optionally, update .env file
+      const fs = require('fs');
+      const dotenv = require('dotenv');
+      const env = dotenv.parse(fs.readFileSync('.env'));
+      env.TWITCH_ACCESS_TOKEN = response.data.access_token;
+      env.TWITCH_REFRESH_TOKEN = response.data.refresh_token;
+  
+      const envString = Object.keys(env)
+        .map(key => `${key}=${env[key]}`)
+        .join('\n');
+      
+      fs.writeFileSync('.env', envString);
+  
+      return response.data.access_token;
+    } catch (error) {
+      console.error('Error refreshing Twitch token:', error);
+      throw error;
+    }
+  }
+  
+  async connectTwitch() {
+    try {
+      // Check if token is about to expire or is invalid
+      const response = await axios.get('https://id.twitch.tv/oauth2/validate', {
+        headers: {
+          'Authorization': `OAuth ${process.env.TWITCH_ACCESS_TOKEN}`
+        }
+      });
+  
+      // If token validation fails, catch the error and refresh
+    } catch (error) {
+      console.log('Token invalid or expired, refreshing...');
+      await this.refreshTwitchToken();
+    }
     // Disconnect existing client if any
     this.disconnectTwitch();
     
@@ -253,115 +265,128 @@ class ChatIntegration extends EventEmitter {
       return;
     }
     
+    console.log('TWITCH_CLIENT_ID:', process.env.TWITCH_CLIENT_ID);
+    console.log('TWITCH_ACCESS_TOKEN:', process.env.TWITCH_ACCESS_TOKEN);
+  
+    if (!process.env.TWITCH_CLIENT_ID || !process.env.TWITCH_ACCESS_TOKEN) {
+      console.error('Missing Twitch credentials');
+      this.sources.twitch.lastError = 'Missing Twitch credentials';
+      this.emit('status-updated', this.getStatus());
+      return;
+    }
+    
+    const channelBadgeMap = {};
+    
     try {
-      // Get current time to filter out historical messages
-      this.sources.twitch.connectionTimestamp = new Date();
-      console.log(`Twitch connection established at: ${this.sources.twitch.connectionTimestamp.toISOString()}`);
-      
-      // Create a new TMI client
-      this.sources.twitch.client = new tmi.Client({
-        options: { debug: false },
-        connection: {
-          reconnect: true,
-          secure: true
-        },
-        channels: [this.sources.twitch.channelName]
-      });
-      
-      // Connect to Twitch
-      this.sources.twitch.client.connect()
-        .then(() => {
-          console.log(`Connected to Twitch channel: ${this.sources.twitch.channelName}`);
-          this.sources.twitch.connected = true;
-          this.sources.twitch.lastError = '';
-          this.emit('status-updated', this.getStatus());
-        })
-        .catch(error => {
-          console.error(`Error connecting to Twitch: ${error.message}`);
-          this.sources.twitch.connected = false;
-          this.sources.twitch.lastError = error.message;
-          this.emit('status-updated', this.getStatus());
-        });
-      
-      // Listen for Twitch chat messages - improved badge handling
-      this.sources.twitch.client.on('message', (channel, tags, message, self) => {
-        // Skip messages from the bot itself
-        if (self) return;
-        
-        // Check if the message is from before our connection time
-        const messageTimestamp = new Date(parseInt(tags['tmi-sent-ts']));
-        if (messageTimestamp < this.sources.twitch.connectionTimestamp) {
-          console.log(`Skipping historical Twitch message from ${tags['display-name']}`);
-          return;
+      // Fetch global badges
+      const globalBadgesResponse = await axios.get('https://api.twitch.tv/helix/chat/badges/global', {
+        headers: {
+          'Authorization': `Bearer ${process.env.TWITCH_ACCESS_TOKEN}`,
+          'Client-Id': process.env.TWITCH_CLIENT_ID
         }
-        
-        // Extract badge information - improved for better handling
-        const badges = [];
-        if (tags.badges) {
-          for (const [type, version] of Object.entries(tags.badges)) {
-            // Use a more complete mapping for common badge types
-            const badgeMap = {
-              'broadcaster': 'https://static-cdn.jtvnw.net/badges/v1/5527c58c-fb7d-422d-b71b-f309dcb85cc1/3',
-              'moderator': 'https://static-cdn.jtvnw.net/badges/v1/3267646d-33f0-4b17-b3df-f923a41db1d0/3',
-              'vip': 'https://static-cdn.jtvnw.net/badges/v1/b817aba4-fad8-49e2-b88a-7cc744dfa6ec/3',
-              'subscriber': 'https://static-cdn.jtvnw.net/badges/v1/5d9f2208-5dd8-11e7-8513-2ff4adfae661/3',
-              'premium': 'https://static-cdn.jtvnw.net/badges/v1/1711e5d4-5d4d-458e-b6b8-e2a895729d37/3',
-              'partner': 'https://static-cdn.jtvnw.net/badges/v1/29f0e68e-2010-407a-a80a-5bc656928936/3',
-              'glhf-pledge': 'https://static-cdn.jtvnw.net/badges/v1/3158e758-3cb4-43c5-94b3-7639810451c5/3',
-              'bits': 'https://static-cdn.jtvnw.net/badges/v1/73b5c3fb-24f9-4a82-a852-2f475b59411c/3',
-              'bits-leader': 'https://static-cdn.jtvnw.net/badges/v1/8bedf8c3-7a6d-4df2-b62f-791b96a5dd31/3',
-              'turbo': 'https://static-cdn.jtvnw.net/badges/v1/6c549a3e-18a3-488b-b753-5728b6ed9b1d/3'
-            };
-            
-            // Check if we have a predefined badge URL
-            if (badgeMap[type]) {
-              badges.push(badgeMap[type]);
-            } else {
-              // For other badges, use a generic format with CDN
-              badges.push(`https://static-cdn.jtvnw.net/badges/v1/${type}/${version}/3`);
-              console.log(`Using fallback URL for badge type: ${type}, version: ${version}`);
-            }
-          }
-        }
-        
-        // Log badge information for debugging
-        console.log(`Twitch badges found for ${tags['display-name']}: ${badges.length}`);
-        badges.forEach((badge, index) => {
-          console.log(`Badge ${index+1}: ${badge}`);
-        });
-        
-        // Create standardized message object
-        const chatMessage = {
-          platform: 'twitch',
-          username: tags['display-name'] || tags.username,
-          content: message,
-          color: tags.color || this.getColorFromUsername(tags.username),
-          badges: badges,
-          timestamp: messageTimestamp.toISOString(),
-          id: `twitch-${tags.id || Date.now()}-${Math.random().toString(36).substr(2, 9)}`
-        };
-        
-        // Emit message event
-        console.log(`Processing Twitch message from ${chatMessage.username} with ${badges.length} badges`);
-        this.emit('chat-message', chatMessage);
       });
-      
-      // Listen for disconnection
-      this.sources.twitch.client.on('disconnected', (reason) => {
-        console.log(`Disconnected from Twitch: ${reason}`);
-        this.sources.twitch.connected = false;
-        this.sources.twitch.lastError = reason;
-        this.emit('status-updated', this.getStatus());
+  
+      // Map global badges
+      globalBadgesResponse.data.data.forEach(badgeSet => {
+        badgeSet.versions.forEach(version => {
+          channelBadgeMap[`global_${badgeSet.set_id}/${version.id}`] = version.image_url_1x;
+        });
+      });
+  
+      // Fetch broadcaster's user ID
+      const userResponse = await axios.get('https://api.twitch.tv/helix/users', {
+        params: { login: this.sources.twitch.channelName },
+        headers: {
+          'Authorization': `Bearer ${process.env.TWITCH_ACCESS_TOKEN}`,
+          'Client-Id': process.env.TWITCH_CLIENT_ID
+        }
+      });
+  
+      const broadcasterId = userResponse.data.data[0].id;
+  
+      // Fetch channel-specific badges
+      const badgesResponse = await axios.get(`https://api.twitch.tv/helix/chat/badges`, {
+        params: { broadcaster_id: broadcasterId },
+        headers: {
+          'Authorization': `Bearer ${process.env.TWITCH_ACCESS_TOKEN}`,
+          'Client-Id': process.env.TWITCH_CLIENT_ID
+        }
+      });
+  
+      // Map channel-specific badges
+      badgesResponse.data.data.forEach(badgeSet => {
+        badgeSet.versions.forEach(version => {
+          channelBadgeMap[`channel_${badgeSet.set_id}/${version.id}`] = version.image_url_1x;
+        });
       });
     } catch (error) {
-      console.error(`Error initializing Twitch client: ${error.message}`);
-      this.sources.twitch.connected = false;
-      this.sources.twitch.lastError = error.message;
+      console.error('Detailed Twitch API error:', error.response ? error.response.data : error);
+      this.sources.twitch.lastError = 'Error fetching Twitch badges';
       this.emit('status-updated', this.getStatus());
     }
-  }
   
-  // Disconnect from Twitch chat
+    // Existing client connection logic
+    this.sources.twitch.client = new tmi.Client({
+      options: { debug: false },
+      connection: {
+        reconnect: true,
+        secure: true
+      },
+      channels: [this.sources.twitch.channelName]
+    });
+    
+    this.sources.twitch.client.connect()
+      .then(() => {
+        console.log(`Connected to Twitch channel: ${this.sources.twitch.channelName}`);
+        this.sources.twitch.connected = true;
+        this.sources.twitch.lastError = '';
+        this.emit('status-updated', this.getStatus());
+      })
+      .catch(error => {
+        console.error(`Error connecting to Twitch: ${error.message}`);
+        this.sources.twitch.connected = false;
+        this.sources.twitch.lastError = error.message;
+        this.emit('status-updated', this.getStatus());
+      });
+    
+    this.sources.twitch.client.on('message', (channel, tags, message, self) => {
+      if (self) return;
+      
+      const messageTimestamp = new Date(parseInt(tags['tmi-sent-ts']));
+      if (messageTimestamp < this.sources.twitch.connectionTimestamp) {
+        console.log(`Skipping historical Twitch message from ${tags['display-name']}`);
+        return;
+      }
+      
+      const badges = [];
+      if (tags.badges) {
+        for (const [type, version] of Object.entries(tags.badges)) {
+          const globalBadgeKey = `global_${type}/${version}`;
+          const channelBadgeKey = `channel_${type}/${version}`;
+          
+          const badgeUrl = channelBadgeMap[channelBadgeKey] || 
+                           channelBadgeMap[globalBadgeKey] || 
+                           `https://static-cdn.jtvnw.net/badges/v1/${type}/${version}/3`;
+          
+          badges.push(badgeUrl);
+        }
+      }
+      
+      const chatMessage = {
+        platform: 'twitch',
+        username: tags['display-name'] || tags.username,
+        content: message,
+        color: tags.color || this.getColorFromUsername(tags.username),
+        badges: badges,
+        timestamp: messageTimestamp.toISOString(),
+        id: `twitch-${tags.id || Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+      };
+      
+      console.log(`Processing Twitch message from ${chatMessage.username} with ${badges.length} badges`);
+      this.emit('chat-message', chatMessage);
+    });
+  }
+
   disconnectTwitch() {
     if (this.sources.twitch.client) {
       try {
@@ -376,9 +401,7 @@ class ChatIntegration extends EventEmitter {
     this.emit('status-updated', this.getStatus());
   }
   
-  // Connect to YouTube Live Chat with enhanced channel handling
-async connectYouTube() {
-    // Disconnect existing connection if any
+  async connectYouTube() {
     this.disconnectYouTube();
     
     if (!this.sources.youtube.enabled || !this.sources.youtube.apiKey) {
@@ -388,17 +411,14 @@ async connectYouTube() {
     }
     
     try {
-      // If we have a username but no channel ID, resolve it first
       if (this.sources.youtube.channelUsername && !this.sources.youtube.channelId) {
         await this.resolveChannelId();
       }
       
-      // If we have a channel ID but no video ID, find the active livestream
       if (this.sources.youtube.channelId && !this.sources.youtube.videoId) {
         await this.findActiveLiveStream();
       }
       
-      // If we have a video ID, get the live chat ID
       if (this.sources.youtube.videoId) {
         await this.getLiveChatId();
       } else {
@@ -408,7 +428,6 @@ async connectYouTube() {
         return;
       }
       
-      // Start polling for chat messages if we have a live chat ID
       if (this.sources.youtube.liveChatId) {
         this.startYouTubeChatPolling();
       } else {
@@ -423,15 +442,12 @@ async connectYouTube() {
       this.emit('status-updated', this.getStatus());
     }
   }
-
-  // Resolve a channel username to a channel ID
+  
   async resolveChannelId() {
     try {
       console.log(`Resolving channel username: ${this.sources.youtube.channelUsername}`);
       
-      // For modern @username format, use a search query
       if (this.sources.youtube.channelUsername) {
-        // Using search to find the channel
         console.log(`Searching for channel with username: ${this.sources.youtube.channelUsername}`);
         
         const searchQuery = this.sources.youtube.channelUsername.startsWith('@') ? 
@@ -445,7 +461,6 @@ async connectYouTube() {
         console.log(`Got search response with ${response.data.items?.length || 0} items`);
         
         if (response.data.items && response.data.items.length > 0) {
-          // Extract channel ID from search results
           this.sources.youtube.channelId = response.data.items[0].snippet.channelId;
           console.log(`Found channel ID from search: ${this.sources.youtube.channelId}`);
           return true;
@@ -459,21 +474,15 @@ async connectYouTube() {
       return false;
     } catch (error) {
       console.error(`Error resolving channel ID: ${error.message}`);
-      if (error.response) {
-        console.error(`Status: ${error.response.status}`);
-        console.error(`Data: ${JSON.stringify(error.response.data)}`);
-      }
       this.sources.youtube.lastError = `Error resolving channel ID: ${error.message}`;
       throw error;
     }
   }
-  
-  // Improved active live stream finder function
-async findActiveLiveStream() {
+
+  async findActiveLiveStream() {
     try {
       console.log(`Finding active livestreams for channel ID: ${this.sources.youtube.channelId}`);
       
-      // Use search endpoint with type=video, eventType=live filter
       const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=id,snippet&channelId=${this.sources.youtube.channelId}&eventType=live&type=video&maxResults=1&key=${this.sources.youtube.apiKey}`;
       console.log(`Making API request to: ${searchUrl}`);
       
@@ -491,16 +500,11 @@ async findActiveLiveStream() {
       return false;
     } catch (error) {
       console.error(`Error finding active YouTube live stream: ${error.message}`);
-      if (error.response) {
-        console.error(`Status: ${error.response.status}`);
-        console.error(`Data: ${JSON.stringify(error.response.data)}`);
-      }
       this.sources.youtube.lastError = `Error finding live stream: ${error.message}`;
       throw error;
     }
   }
   
-  // Get live chat ID for a YouTube video
   async getLiveChatId() {
     try {
       const response = await axios.get(
@@ -524,53 +528,22 @@ async findActiveLiveStream() {
     }
   }
   
-  // Find active live stream for a YouTube channel
-  async findActiveLiveStream() {
-    try {
-      const response = await axios.get(
-        `https://www.googleapis.com/youtube/v3/search?part=id&channelId=${this.sources.youtube.channelId}&eventType=live&type=video&key=${this.sources.youtube.apiKey}`
-      );
-      
-      if (response.data.items && response.data.items.length > 0) {
-        this.sources.youtube.videoId = response.data.items[0].id.videoId;
-        console.log(`Found active YouTube live stream: ${this.sources.youtube.videoId}`);
-        
-        // Now get the live chat ID
-        return await this.getLiveChatId();
-      }
-      
-      console.log('No active live stream found for the provided channel');
-      return false;
-    } catch (error) {
-      console.error(`Error finding active YouTube live stream: ${error.message}`);
-      throw error;
-    }
-  }
-  
-  // Start polling for YouTube chat messages
-  // For YouTube, modify the startYouTubeChatPolling function
-startYouTubeChatPolling() {
-    // Clear existing polling interval
+  startYouTubeChatPolling() {
     if (this.sources.youtube.pollingInterval) {
       clearInterval(this.sources.youtube.pollingInterval);
     }
     
-    // Get the current time to filter out historical messages
     this.sources.youtube.connectionTimestamp = new Date().toISOString();
     console.log(`YouTube connection established at: ${this.sources.youtube.connectionTimestamp}`);
     
-    // Reset next page token - important to only receive the most recent messages
     this.sources.youtube.nextPageToken = null;
     
-    // Mark as connected
     this.sources.youtube.connected = true;
     this.sources.youtube.lastError = '';
     this.emit('status-updated', this.getStatus());
     
-    // Function to poll for chat messages
     const pollChatMessages = async () => {
       try {
-        // Construct the URL with or without page token
         let url = `https://www.googleapis.com/youtube/v3/liveChat/messages?part=snippet,authorDetails&liveChatId=${this.sources.youtube.liveChatId}&key=${this.sources.youtube.apiKey}`;
         
         if (this.sources.youtube.nextPageToken) {
@@ -579,25 +552,20 @@ startYouTubeChatPolling() {
         
         const response = await axios.get(url);
         
-        // Update next page token
         this.sources.youtube.nextPageToken = response.data.nextPageToken;
         
-        // Process chat messages
         if (response.data.items && response.data.items.length > 0) {
           response.data.items.forEach(item => {
-            // Skip deleted messages
             if (item.snippet.hasOwnProperty('isDeleted') && item.snippet.isDeleted) {
               return;
             }
             
-            // Skip historical messages (before our connection time)
             const messageTimestamp = new Date(item.snippet.publishedAt).toISOString();
             if (messageTimestamp < this.sources.youtube.connectionTimestamp) {
               console.log(`Skipping historical message from ${item.authorDetails.displayName}`);
               return;
             }
             
-            // Create standardized message object
             const chatMessage = {
               platform: 'youtube',
               username: item.authorDetails.displayName,
@@ -608,7 +576,6 @@ startYouTubeChatPolling() {
               id: `youtube-${item.id}-${Math.random().toString(36).substr(2, 9)}`
             };
             
-            // Add badges based on user roles
             if (item.authorDetails.isChatOwner) {
               chatMessage.badges.push('https://www.gstatic.com/youtube/img/creator_badges/owner.png');
             }
@@ -619,7 +586,6 @@ startYouTubeChatPolling() {
               chatMessage.badges.push('https://www.gstatic.com/youtube/img/creator_badges/sponsor.png');
             }
             
-            // Emit message event
             console.log(`Processing YouTube message from ${chatMessage.username}`);
             this.emit('chat-message', chatMessage);
           });
@@ -630,20 +596,16 @@ startYouTubeChatPolling() {
         this.sources.youtube.lastError = error.message;
         this.emit('status-updated', this.getStatus());
         
-        // Clear the polling interval if there's an error
         clearInterval(this.sources.youtube.pollingInterval);
         this.sources.youtube.pollingInterval = null;
       }
     };
     
-    // Initial poll after a short delay (give time for connection setup)
     setTimeout(pollChatMessages, 1000);
     
-    // Set up interval polling (adjust the interval as needed)
     this.sources.youtube.pollingInterval = setInterval(pollChatMessages, 5000);
   }
-  
-  // Disconnect from YouTube Live Chat
+
   disconnectYouTube() {
     if (this.sources.youtube.pollingInterval) {
       clearInterval(this.sources.youtube.pollingInterval);
@@ -656,7 +618,6 @@ startYouTubeChatPolling() {
     this.emit('status-updated', this.getStatus());
   }
   
-  // Generate consistent color based on username
   getColorFromUsername(username) {
     let hash = 0;
     for (let i = 0; i < username.length; i++) {
@@ -664,24 +625,14 @@ startYouTubeChatPolling() {
     }
     
     const colors = [
-      '#FF0000', // Red
-      '#0000FF', // Blue
-      '#00FF00', // Green
-      '#FFFF00', // Yellow
-      '#FF00FF', // Magenta
-      '#00FFFF', // Cyan
-      '#FF7F00', // Orange
-      '#7F00FF', // Purple
-      '#007FFF', // Sky Blue
-      '#FF007F', // Pink
-      '#7FFF00', // Lime
-      '#00FF7F'  // Spring Green
+      '#FF0000', '#0000FF', '#00FF00', '#FFFF00', 
+      '#FF00FF', '#00FFFF', '#FF7F00', '#7F00FF', 
+      '#007FFF', '#FF007F', '#7FFF00', '#00FF7F'
     ];
     
     return colors[Math.abs(hash) % colors.length];
   }
   
-  // Connect to all enabled chat sources
   connectAll() {
     if (this.sources.twitch.enabled && this.sources.twitch.channelName) {
       this.connectTwitch();
@@ -693,7 +644,6 @@ startYouTubeChatPolling() {
     }
   }
   
-  // Disconnect from all chat sources
   disconnectAll() {
     this.disconnectTwitch();
     this.disconnectYouTube();
