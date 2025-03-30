@@ -20,7 +20,7 @@ class ChatIntegration extends EventEmitter {
         enabled: false,
         channelId: '',
         videoId: '',
-        apiKey: '',
+        apiKey: process.env.YOUTUBE_API_KEY || '',
         liveChatId: '',
         connected: false,
         lastError: '',
@@ -47,7 +47,11 @@ class ChatIntegration extends EventEmitter {
           this.sources.youtube.enabled = config.youtube.enabled || false;
           this.sources.youtube.channelId = config.youtube.channelId || '';
           this.sources.youtube.videoId = config.youtube.videoId || '';
-          this.sources.youtube.apiKey = config.youtube.apiKey || '';
+          // Use environment variable for API key if available,
+          // otherwise fall back to config file (but don't save API key to config)
+          if (!this.sources.youtube.apiKey && process.env.YOUTUBE_API_KEY) {
+            this.sources.youtube.apiKey = process.env.YOUTUBE_API_KEY;
+          }
         }
         
         console.log('Chat sources configuration loaded');
@@ -62,6 +66,7 @@ class ChatIntegration extends EventEmitter {
   
   saveConfig() {
     try {
+      // Create config object without sensitive API keys
       const config = {
         twitch: {
           enabled: this.sources.twitch.enabled,
@@ -71,8 +76,8 @@ class ChatIntegration extends EventEmitter {
           enabled: this.sources.youtube.enabled,
           channelId: this.sources.youtube.channelId,
           videoId: this.sources.youtube.videoId,
-          channelUsername: this.sources.youtube.channelUsername,
-          apiKey: this.sources.youtube.apiKey
+          channelUsername: this.sources.youtube.channelUsername
+          // Don't save API key to the config file
         }
       };
       
@@ -107,7 +112,7 @@ class ChatIntegration extends EventEmitter {
       const youtubeChanged = 
         this.sources.youtube.enabled !== config.youtube.enabled ||
         config.youtube.url !== undefined ||
-        this.sources.youtube.apiKey !== config.youtube.apiKey;
+        (config.youtube.apiKey && this.sources.youtube.apiKey !== config.youtube.apiKey);
       
       this.sources.youtube.enabled = config.youtube.enabled;
       
@@ -122,12 +127,14 @@ class ChatIntegration extends EventEmitter {
         this.processYouTubeUrl(config.youtube.url);
       }
       
-      // Update API key if provided
+      // Update API key if provided and store it in memory only
       if (config.youtube.apiKey) {
         this.sources.youtube.apiKey = config.youtube.apiKey;
+        // Optionally update environment variable
+        process.env.YOUTUBE_API_KEY = config.youtube.apiKey;
       }
       
-      // Save configuration to file
+      // Save configuration to file (API key will be excluded)
       this.saveConfig();
       
       // Reconnect if needed
@@ -166,6 +173,7 @@ class ChatIntegration extends EventEmitter {
     try {
       console.log(`Processing YouTube URL: ${url}`);
       
+      // Handle live chat URLs 
       const liveChatMatch = url.match(/youtube\.com\/live_chat.*[?&]v=([^&]+)/);
       if (liveChatMatch && liveChatMatch[1]) {
         this.sources.youtube.videoId = liveChatMatch[1];
@@ -173,6 +181,7 @@ class ChatIntegration extends EventEmitter {
         return;
       }
       
+      // Handle video URLs
       const videoIdMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\?]+)/);
       if (videoIdMatch && videoIdMatch[1]) {
         this.sources.youtube.videoId = videoIdMatch[1];
@@ -180,24 +189,36 @@ class ChatIntegration extends EventEmitter {
         return;
       }
       
-      const atUsernameMatch = url.match(/(?:youtube\.com\/@)([^\/\?]+)/);
+      // Handle @username URLs
+      const atUsernameMatch = url.match(/(?:youtube\.com\/@)([^\/\?#]+)/);
       if (atUsernameMatch && atUsernameMatch[1]) {
         this.sources.youtube.channelUsername = atUsernameMatch[1];
         console.log(`Found YouTube @username: ${this.sources.youtube.channelUsername}`);
         return;
       }
       
-      const channelIdMatch = url.match(/(?:youtube\.com\/channel\/)([^\/\?]+)/);
+      // Handle channel ID URLs
+      const channelIdMatch = url.match(/(?:youtube\.com\/channel\/)([^\/\?#]+)/);
       if (channelIdMatch && channelIdMatch[1]) {
         this.sources.youtube.channelId = channelIdMatch[1];
         console.log(`Extracted YouTube channel ID: ${this.sources.youtube.channelId}`);
         return;
       }
       
-      const usernameMatch = url.match(/(?:youtube\.com\/)(?:c\/|user\/)([^\/\?]+)/);
+      // Handle traditional username URLs
+      const usernameMatch = url.match(/(?:youtube\.com\/)(?:c\/|user\/)([^\/\?#]+)/);
       if (usernameMatch && usernameMatch[1]) {
         this.sources.youtube.channelUsername = usernameMatch[1];
         console.log(`Found YouTube username: ${this.sources.youtube.channelUsername}`);
+        return;
+      }
+      
+      // Handle simple channel names (e.g., youtube.com/LEC)
+      const simpleChannelMatch = url.match(/youtube\.com\/([^\/\?#]+)/);
+      if (simpleChannelMatch && simpleChannelMatch[1] && 
+          !['watch', 'channel', 'c', 'user', 'live_chat'].includes(simpleChannelMatch[1])) {
+        this.sources.youtube.channelUsername = simpleChannelMatch[1];
+        console.log(`Found YouTube simple channel name: ${this.sources.youtube.channelUsername}`);
         return;
       }
       
@@ -209,6 +230,11 @@ class ChatIntegration extends EventEmitter {
 
   async refreshTwitchToken() {
     try {
+      // Verify required env variables exist
+      if (!process.env.TWITCH_CLIENT_ID || !process.env.TWITCH_CLIENT_SECRET || !process.env.TWITCH_REFRESH_TOKEN) {
+        throw new Error('Missing required Twitch credentials in environment variables');
+      }
+
       const response = await axios.post('https://id.twitch.tv/oauth2/token', null, {
         params: {
           grant_type: 'refresh_token',
@@ -222,18 +248,25 @@ class ChatIntegration extends EventEmitter {
       process.env.TWITCH_ACCESS_TOKEN = response.data.access_token;
       process.env.TWITCH_REFRESH_TOKEN = response.data.refresh_token;
   
-      // Optionally, update .env file
-      const fs = require('fs');
-      const dotenv = require('dotenv');
-      const env = dotenv.parse(fs.readFileSync('.env'));
-      env.TWITCH_ACCESS_TOKEN = response.data.access_token;
-      env.TWITCH_REFRESH_TOKEN = response.data.refresh_token;
-  
-      const envString = Object.keys(env)
-        .map(key => `${key}=${env[key]}`)
-        .join('\n');
+      // Update .env file if it exists in development
+      if (fs.existsSync('.env')) {
+        try {
+          const dotenv = require('dotenv');
+          const env = dotenv.parse(fs.readFileSync('.env'));
+          env.TWITCH_ACCESS_TOKEN = response.data.access_token;
+          env.TWITCH_REFRESH_TOKEN = response.data.refresh_token;
       
-      fs.writeFileSync('.env', envString);
+          const envString = Object.keys(env)
+            .map(key => `${key}=${env[key]}`)
+            .join('\n');
+          
+          fs.writeFileSync('.env', envString);
+          console.log('Updated tokens in .env file');
+        } catch (envError) {
+          console.error('Error updating .env file:', envError);
+          // Continue even if .env update fails
+        }
+      }
   
       return response.data.access_token;
     } catch (error) {
@@ -244,147 +277,153 @@ class ChatIntegration extends EventEmitter {
   
   async connectTwitch() {
     try {
+      // Check if required environment variables exist
+      if (!process.env.TWITCH_CLIENT_ID || !process.env.TWITCH_ACCESS_TOKEN) {
+        this.sources.twitch.lastError = 'Missing Twitch credentials in environment variables';
+        this.emit('status-updated', this.getStatus());
+        return;
+      }
+
       // Check if token is about to expire or is invalid
-      const response = await axios.get('https://id.twitch.tv/oauth2/validate', {
-        headers: {
-          'Authorization': `OAuth ${process.env.TWITCH_ACCESS_TOKEN}`
-        }
-      });
-  
-      // If token validation fails, catch the error and refresh
-    } catch (error) {
-      console.log('Token invalid or expired, refreshing...');
-      await this.refreshTwitchToken();
-    }
-    // Disconnect existing client if any
-    this.disconnectTwitch();
-    
-    if (!this.sources.twitch.enabled || !this.sources.twitch.channelName) {
-      this.sources.twitch.lastError = 'Channel name is required';
-      this.emit('status-updated', this.getStatus());
-      return;
-    }
-    
-    console.log('TWITCH_CLIENT_ID:', process.env.TWITCH_CLIENT_ID);
-    console.log('TWITCH_ACCESS_TOKEN:', process.env.TWITCH_ACCESS_TOKEN);
-  
-    if (!process.env.TWITCH_CLIENT_ID || !process.env.TWITCH_ACCESS_TOKEN) {
-      console.error('Missing Twitch credentials');
-      this.sources.twitch.lastError = 'Missing Twitch credentials';
-      this.emit('status-updated', this.getStatus());
-      return;
-    }
-    
-    const channelBadgeMap = {};
-    
-    try {
-      // Fetch global badges
-      const globalBadgesResponse = await axios.get('https://api.twitch.tv/helix/chat/badges/global', {
-        headers: {
-          'Authorization': `Bearer ${process.env.TWITCH_ACCESS_TOKEN}`,
-          'Client-Id': process.env.TWITCH_CLIENT_ID
-        }
-      });
-  
-      // Map global badges
-      globalBadgesResponse.data.data.forEach(badgeSet => {
-        badgeSet.versions.forEach(version => {
-          channelBadgeMap[`global_${badgeSet.set_id}/${version.id}`] = version.image_url_1x;
+      try {
+        await axios.get('https://id.twitch.tv/oauth2/validate', {
+          headers: {
+            'Authorization': `OAuth ${process.env.TWITCH_ACCESS_TOKEN}`
+          }
         });
-      });
-  
-      // Fetch broadcaster's user ID
-      const userResponse = await axios.get('https://api.twitch.tv/helix/users', {
-        params: { login: this.sources.twitch.channelName },
-        headers: {
-          'Authorization': `Bearer ${process.env.TWITCH_ACCESS_TOKEN}`,
-          'Client-Id': process.env.TWITCH_CLIENT_ID
-        }
-      });
-  
-      const broadcasterId = userResponse.data.data[0].id;
-  
-      // Fetch channel-specific badges
-      const badgesResponse = await axios.get(`https://api.twitch.tv/helix/chat/badges`, {
-        params: { broadcaster_id: broadcasterId },
-        headers: {
-          'Authorization': `Bearer ${process.env.TWITCH_ACCESS_TOKEN}`,
-          'Client-Id': process.env.TWITCH_CLIENT_ID
-        }
-      });
-  
-      // Map channel-specific badges
-      badgesResponse.data.data.forEach(badgeSet => {
-        badgeSet.versions.forEach(version => {
-          channelBadgeMap[`channel_${badgeSet.set_id}/${version.id}`] = version.image_url_1x;
-        });
-      });
-    } catch (error) {
-      console.error('Detailed Twitch API error:', error.response ? error.response.data : error);
-      this.sources.twitch.lastError = 'Error fetching Twitch badges';
-      this.emit('status-updated', this.getStatus());
-    }
-  
-    // Existing client connection logic
-    this.sources.twitch.client = new tmi.Client({
-      options: { debug: false },
-      connection: {
-        reconnect: true,
-        secure: true
-      },
-      channels: [this.sources.twitch.channelName]
-    });
-    
-    this.sources.twitch.client.connect()
-      .then(() => {
-        console.log(`Connected to Twitch channel: ${this.sources.twitch.channelName}`);
-        this.sources.twitch.connected = true;
-        this.sources.twitch.lastError = '';
-        this.emit('status-updated', this.getStatus());
-      })
-      .catch(error => {
-        console.error(`Error connecting to Twitch: ${error.message}`);
-        this.sources.twitch.connected = false;
-        this.sources.twitch.lastError = error.message;
-        this.emit('status-updated', this.getStatus());
-      });
-    
-    this.sources.twitch.client.on('message', (channel, tags, message, self) => {
-      if (self) return;
+      } catch (error) {
+        console.log('Token invalid or expired, refreshing...');
+        await this.refreshTwitchToken();
+      }
+
+      // Disconnect existing client if any
+      this.disconnectTwitch();
       
-      const messageTimestamp = new Date(parseInt(tags['tmi-sent-ts']));
-      if (messageTimestamp < this.sources.twitch.connectionTimestamp) {
-        console.log(`Skipping historical Twitch message from ${tags['display-name']}`);
+      if (!this.sources.twitch.enabled || !this.sources.twitch.channelName) {
+        this.sources.twitch.lastError = 'Channel name is required';
+        this.emit('status-updated', this.getStatus());
         return;
       }
       
-      const badges = [];
-      if (tags.badges) {
-        for (const [type, version] of Object.entries(tags.badges)) {
-          const globalBadgeKey = `global_${type}/${version}`;
-          const channelBadgeKey = `channel_${type}/${version}`;
-          
-          const badgeUrl = channelBadgeMap[channelBadgeKey] || 
-                           channelBadgeMap[globalBadgeKey] || 
-                           `https://static-cdn.jtvnw.net/badges/v1/${type}/${version}/3`;
-          
-          badges.push(badgeUrl);
-        }
+      const channelBadgeMap = {};
+      
+      try {
+        // Fetch global badges
+        const globalBadgesResponse = await axios.get('https://api.twitch.tv/helix/chat/badges/global', {
+          headers: {
+            'Authorization': `Bearer ${process.env.TWITCH_ACCESS_TOKEN}`,
+            'Client-Id': process.env.TWITCH_CLIENT_ID
+          }
+        });
+    
+        // Map global badges
+        globalBadgesResponse.data.data.forEach(badgeSet => {
+          badgeSet.versions.forEach(version => {
+            channelBadgeMap[`global_${badgeSet.set_id}/${version.id}`] = version.image_url_1x;
+          });
+        });
+    
+        // Fetch broadcaster's user ID
+        const userResponse = await axios.get('https://api.twitch.tv/helix/users', {
+          params: { login: this.sources.twitch.channelName },
+          headers: {
+            'Authorization': `Bearer ${process.env.TWITCH_ACCESS_TOKEN}`,
+            'Client-Id': process.env.TWITCH_CLIENT_ID
+          }
+        });
+    
+        const broadcasterId = userResponse.data.data[0].id;
+    
+        // Fetch channel-specific badges
+        const badgesResponse = await axios.get(`https://api.twitch.tv/helix/chat/badges`, {
+          params: { broadcaster_id: broadcasterId },
+          headers: {
+            'Authorization': `Bearer ${process.env.TWITCH_ACCESS_TOKEN}`,
+            'Client-Id': process.env.TWITCH_CLIENT_ID
+          }
+        });
+    
+        // Map channel-specific badges
+        badgesResponse.data.data.forEach(badgeSet => {
+          badgeSet.versions.forEach(version => {
+            channelBadgeMap[`channel_${badgeSet.set_id}/${version.id}`] = version.image_url_1x;
+          });
+        });
+      } catch (error) {
+        console.error('Detailed Twitch API error:', error.response ? error.response.data : error);
+        this.sources.twitch.lastError = 'Error fetching Twitch badges';
+        this.emit('status-updated', this.getStatus());
       }
+    
+      // Store connection timestamp to filter historical messages
+      this.sources.twitch.connectionTimestamp = new Date();
       
-      const chatMessage = {
-        platform: 'twitch',
-        username: tags['display-name'] || tags.username,
-        content: message,
-        color: tags.color || this.getColorFromUsername(tags.username),
-        badges: badges,
-        timestamp: messageTimestamp.toISOString(),
-        id: `twitch-${tags.id || Date.now()}-${Math.random().toString(36).substr(2, 9)}`
-      };
+      // Existing client connection logic
+      this.sources.twitch.client = new tmi.Client({
+        options: { debug: false },
+        connection: {
+          reconnect: true,
+          secure: true
+        },
+        channels: [this.sources.twitch.channelName]
+      });
       
-      console.log(`Processing Twitch message from ${chatMessage.username} with ${badges.length} badges`);
-      this.emit('chat-message', chatMessage);
-    });
+      this.sources.twitch.client.connect()
+        .then(() => {
+          console.log(`Connected to Twitch channel: ${this.sources.twitch.channelName}`);
+          this.sources.twitch.connected = true;
+          this.sources.twitch.lastError = '';
+          this.emit('status-updated', this.getStatus());
+        })
+        .catch(error => {
+          console.error(`Error connecting to Twitch: ${error.message}`);
+          this.sources.twitch.connected = false;
+          this.sources.twitch.lastError = error.message;
+          this.emit('status-updated', this.getStatus());
+        });
+      
+      this.sources.twitch.client.on('message', (channel, tags, message, self) => {
+        if (self) return;
+        
+        const messageTimestamp = new Date(parseInt(tags['tmi-sent-ts']));
+        if (messageTimestamp < this.sources.twitch.connectionTimestamp) {
+          console.log(`Skipping historical Twitch message from ${tags['display-name']}`);
+          return;
+        }
+        
+        const badges = [];
+        if (tags.badges) {
+          for (const [type, version] of Object.entries(tags.badges)) {
+            const globalBadgeKey = `global_${type}/${version}`;
+            const channelBadgeKey = `channel_${type}/${version}`;
+            
+            const badgeUrl = channelBadgeMap[channelBadgeKey] || 
+                             channelBadgeMap[globalBadgeKey] || 
+                             `https://static-cdn.jtvnw.net/badges/v1/${type}/${version}/3`;
+            
+            badges.push(badgeUrl);
+          }
+        }
+        
+        const chatMessage = {
+          platform: 'twitch',
+          username: tags['display-name'] || tags.username,
+          content: message,
+          color: tags.color || this.getColorFromUsername(tags.username),
+          badges: badges,
+          timestamp: messageTimestamp.toISOString(),
+          id: `twitch-${tags.id || Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+        };
+        
+        console.log(`Processing Twitch message from ${chatMessage.username} with ${badges.length} badges`);
+        this.emit('chat-message', chatMessage);
+      });
+    } catch (error) {
+      console.error(`Error in connectTwitch:`, error);
+      this.sources.twitch.connected = false;
+      this.sources.twitch.lastError = error.message;
+      this.emit('status-updated', this.getStatus());
+    }
   }
 
   disconnectTwitch() {
@@ -403,6 +442,11 @@ class ChatIntegration extends EventEmitter {
   
   async connectYouTube() {
     this.disconnectYouTube();
+    
+    // Check if API key is available from environment variable
+    if (!this.sources.youtube.apiKey && process.env.YOUTUBE_API_KEY) {
+      this.sources.youtube.apiKey = process.env.YOUTUBE_API_KEY;
+    }
     
     if (!this.sources.youtube.enabled || !this.sources.youtube.apiKey) {
       this.sources.youtube.lastError = 'API key is required';
@@ -455,7 +499,7 @@ class ChatIntegration extends EventEmitter {
           `@${this.sources.youtube.channelUsername}`;
         
         const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=channel&q=${encodeURIComponent(searchQuery)}&maxResults=1&key=${this.sources.youtube.apiKey}`;
-        console.log(`Making API request to: ${searchUrl}`);
+        console.log(`Making API request to search API`);
         
         const response = await axios.get(searchUrl);
         console.log(`Got search response with ${response.data.items?.length || 0} items`);
@@ -484,7 +528,7 @@ class ChatIntegration extends EventEmitter {
       console.log(`Finding active livestreams for channel ID: ${this.sources.youtube.channelId}`);
       
       const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=id,snippet&channelId=${this.sources.youtube.channelId}&eventType=live&type=video&maxResults=1&key=${this.sources.youtube.apiKey}`;
-      console.log(`Making API request to: ${searchUrl}`);
+      console.log(`Making API request for active livestreams`);
       
       const response = await axios.get(searchUrl);
       console.log(`Got search response with ${response.data.items?.length || 0} items`);
@@ -638,7 +682,8 @@ class ChatIntegration extends EventEmitter {
       this.connectTwitch();
     }
     
-    if (this.sources.youtube.enabled && this.sources.youtube.apiKey &&
+    if (this.sources.youtube.enabled && 
+        (this.sources.youtube.apiKey || process.env.YOUTUBE_API_KEY) &&
         (this.sources.youtube.videoId || this.sources.youtube.channelId)) {
       this.connectYouTube();
     }
