@@ -20,7 +20,6 @@ class ChatIntegration extends EventEmitter {
         enabled: false,
         channelId: '',
         videoId: '',
-        apiKey: process.env.YOUTUBE_API_KEY || '',
         liveChatId: '',
         connected: false,
         lastError: '',
@@ -47,11 +46,7 @@ class ChatIntegration extends EventEmitter {
           this.sources.youtube.enabled = config.youtube.enabled || false;
           this.sources.youtube.channelId = config.youtube.channelId || '';
           this.sources.youtube.videoId = config.youtube.videoId || '';
-          // Use environment variable for API key if available,
-          // otherwise fall back to config file (but don't save API key to config)
-          if (!this.sources.youtube.apiKey && process.env.YOUTUBE_API_KEY) {
-            this.sources.youtube.apiKey = process.env.YOUTUBE_API_KEY;
-          }
+          this.sources.youtube.channelUsername = config.youtube.channelUsername || '';
         }
         
         console.log('Chat sources configuration loaded');
@@ -66,7 +61,7 @@ class ChatIntegration extends EventEmitter {
   
   saveConfig() {
     try {
-      // Create config object without sensitive API keys
+      // Only save non-sensitive configuration data
       const config = {
         twitch: {
           enabled: this.sources.twitch.enabled,
@@ -77,7 +72,6 @@ class ChatIntegration extends EventEmitter {
           channelId: this.sources.youtube.channelId,
           videoId: this.sources.youtube.videoId,
           channelUsername: this.sources.youtube.channelUsername
-          // Don't save API key to the config file
         }
       };
       
@@ -109,12 +103,15 @@ class ChatIntegration extends EventEmitter {
   updateConfig(config) {
     // Update YouTube config
     if (config.youtube) {
+      const youtubeEnabled = config.youtube.enabled !== undefined ? 
+        config.youtube.enabled : this.sources.youtube.enabled;
+        
       const youtubeChanged = 
-        this.sources.youtube.enabled !== config.youtube.enabled ||
+        this.sources.youtube.enabled !== youtubeEnabled ||
         config.youtube.url !== undefined ||
-        (config.youtube.apiKey && this.sources.youtube.apiKey !== config.youtube.apiKey);
+        config.youtube.apiKey !== undefined;
       
-      this.sources.youtube.enabled = config.youtube.enabled;
+      this.sources.youtube.enabled = youtubeEnabled;
       
       // Process YouTube URL if provided
       if (config.youtube.url) {
@@ -127,20 +124,18 @@ class ChatIntegration extends EventEmitter {
         this.processYouTubeUrl(config.youtube.url);
       }
       
-      // Update API key if provided and store it in memory only
+      // Update API key in environment variable if provided
       if (config.youtube.apiKey) {
-        this.sources.youtube.apiKey = config.youtube.apiKey;
-        // Optionally update environment variable
         process.env.YOUTUBE_API_KEY = config.youtube.apiKey;
+        console.log('Updated YouTube API key in environment');
       }
       
-      // Save configuration to file (API key will be excluded)
+      // Save configuration to file (API key excluded)
       this.saveConfig();
       
       // Reconnect if needed
       if (youtubeChanged) {
-        if (this.sources.youtube.enabled && 
-            this.sources.youtube.apiKey) {
+        if (this.sources.youtube.enabled && process.env.YOUTUBE_API_KEY) {
           this.connectYouTube();
         } else {
           this.disconnectYouTube();
@@ -149,12 +144,18 @@ class ChatIntegration extends EventEmitter {
     }
     
     if (config.twitch) {
+      const twitchEnabled = config.twitch.enabled !== undefined ?
+        config.twitch.enabled : this.sources.twitch.enabled;
+        
+      const twitchChannelName = config.twitch.channelName !== undefined ?
+        config.twitch.channelName : this.sources.twitch.channelName;
+        
       const twitchChanged = 
-        this.sources.twitch.enabled !== config.twitch.enabled ||
-        this.sources.twitch.channelName !== config.twitch.channelName;
+        this.sources.twitch.enabled !== twitchEnabled ||
+        this.sources.twitch.channelName !== twitchChannelName;
       
-      this.sources.twitch.enabled = config.twitch.enabled;
-      this.sources.twitch.channelName = config.twitch.channelName;
+      this.sources.twitch.enabled = twitchEnabled;
+      this.sources.twitch.channelName = twitchChannelName;
       
       if (twitchChanged) {
         if (this.sources.twitch.enabled && this.sources.twitch.channelName) {
@@ -261,7 +262,7 @@ class ChatIntegration extends EventEmitter {
             .join('\n');
           
           fs.writeFileSync('.env', envString);
-          console.log('Updated tokens in .env file');
+          console.log('Updated Twitch tokens in .env file');
         } catch (envError) {
           console.error('Error updating .env file:', envError);
           // Continue even if .env update fails
@@ -292,7 +293,7 @@ class ChatIntegration extends EventEmitter {
           }
         });
       } catch (error) {
-        console.log('Token invalid or expired, refreshing...');
+        console.log('Twitch token invalid or expired, refreshing...');
         await this.refreshTwitchToken();
       }
 
@@ -443,13 +444,17 @@ class ChatIntegration extends EventEmitter {
   async connectYouTube() {
     this.disconnectYouTube();
     
-    // Check if API key is available from environment variable
-    if (!this.sources.youtube.apiKey && process.env.YOUTUBE_API_KEY) {
-      this.sources.youtube.apiKey = process.env.YOUTUBE_API_KEY;
+    // Check if YouTube API key is available in environment
+    if (!process.env.YOUTUBE_API_KEY) {
+      this.sources.youtube.lastError = 'YouTube API key not found in environment variables';
+      this.sources.youtube.connected = false;
+      this.emit('status-updated', this.getStatus());
+      return;
     }
     
-    if (!this.sources.youtube.enabled || !this.sources.youtube.apiKey) {
-      this.sources.youtube.lastError = 'API key is required';
+    if (!this.sources.youtube.enabled) {
+      this.sources.youtube.lastError = 'YouTube integration is disabled';
+      this.sources.youtube.connected = false;
       this.emit('status-updated', this.getStatus());
       return;
     }
@@ -498,8 +503,8 @@ class ChatIntegration extends EventEmitter {
           this.sources.youtube.channelUsername : 
           `@${this.sources.youtube.channelUsername}`;
         
-        const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=channel&q=${encodeURIComponent(searchQuery)}&maxResults=1&key=${this.sources.youtube.apiKey}`;
-        console.log(`Making API request to search API`);
+        const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=channel&q=${encodeURIComponent(searchQuery)}&maxResults=1&key=${process.env.YOUTUBE_API_KEY}`;
+        console.log(`Making API request for channel search`);
         
         const response = await axios.get(searchUrl);
         console.log(`Got search response with ${response.data.items?.length || 0} items`);
@@ -527,7 +532,7 @@ class ChatIntegration extends EventEmitter {
     try {
       console.log(`Finding active livestreams for channel ID: ${this.sources.youtube.channelId}`);
       
-      const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=id,snippet&channelId=${this.sources.youtube.channelId}&eventType=live&type=video&maxResults=1&key=${this.sources.youtube.apiKey}`;
+      const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=id,snippet&channelId=${this.sources.youtube.channelId}&eventType=live&type=video&maxResults=1&key=${process.env.YOUTUBE_API_KEY}`;
       console.log(`Making API request for active livestreams`);
       
       const response = await axios.get(searchUrl);
@@ -552,7 +557,7 @@ class ChatIntegration extends EventEmitter {
   async getLiveChatId() {
     try {
       const response = await axios.get(
-        `https://www.googleapis.com/youtube/v3/videos?part=liveStreamingDetails&id=${this.sources.youtube.videoId}&key=${this.sources.youtube.apiKey}`
+        `https://www.googleapis.com/youtube/v3/videos?part=liveStreamingDetails&id=${this.sources.youtube.videoId}&key=${process.env.YOUTUBE_API_KEY}`
       );
       
       if (response.data.items && response.data.items.length > 0) {
@@ -588,7 +593,7 @@ class ChatIntegration extends EventEmitter {
     
     const pollChatMessages = async () => {
       try {
-        let url = `https://www.googleapis.com/youtube/v3/liveChat/messages?part=snippet,authorDetails&liveChatId=${this.sources.youtube.liveChatId}&key=${this.sources.youtube.apiKey}`;
+        let url = `https://www.googleapis.com/youtube/v3/liveChat/messages?part=snippet,authorDetails&liveChatId=${this.sources.youtube.liveChatId}&key=${process.env.YOUTUBE_API_KEY}`;
         
         if (this.sources.youtube.nextPageToken) {
           url += `&pageToken=${this.sources.youtube.nextPageToken}`;
@@ -683,8 +688,8 @@ class ChatIntegration extends EventEmitter {
     }
     
     if (this.sources.youtube.enabled && 
-        (this.sources.youtube.apiKey || process.env.YOUTUBE_API_KEY) &&
-        (this.sources.youtube.videoId || this.sources.youtube.channelId)) {
+        (this.sources.youtube.videoId || this.sources.youtube.channelId || 
+         this.sources.youtube.channelUsername)) {
       this.connectYouTube();
     }
   }
