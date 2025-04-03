@@ -58,6 +58,35 @@
             margin-bottom: 20px;
             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
         }
+        
+        /* Add new settings for profile pictures */
+.profile-picture-settings {
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid var(--border-color);
+}
+
+.checkbox-group {
+    margin: 5px 0;
+}
+
+/* Style for the preview messages to show profile pictures */
+.preview-message {
+    display: flex;
+    align-items: flex-start;
+}
+
+.preview-profile-picture {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    margin-right: 8px;
+    background-color: #666;
+}
+
+.preview-content {
+    flex: 1;
+}
 
         .dashboard {
             display: grid;
@@ -480,6 +509,14 @@
                         <input type="checkbox" id="obs-showPlatforms" checked>
                         <label for="obs-showPlatforms">Show Platform Icons</label>
                     </div>
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="obs-showBadges">
+                        <label for="obs-showBadges">Show User Badges</label>
+                    </div>
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="obs-showProfilePictures" checked>
+                        <label for="obs-showProfilePictures">Show Profile Pictures</label>
+                    </div>
                 </div>
             </div>
         </div>
@@ -566,6 +603,14 @@
                     <div class="checkbox-group">
                         <input type="checkbox" id="streamer-showPlatforms" checked>
                         <label for="streamer-showPlatforms">Show Platform Icons</label>
+                    </div>
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="streamer-showBadges">
+                        <label for="streamer-showBadges">Show User Badges</label>
+                    </div>
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="streamer-showProfilePictures" checked>
+                        <label for="streamer-showProfilePictures">Show Profile Pictures</label>
                     </div>
                 </div>
             </div>

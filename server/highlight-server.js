@@ -12,6 +12,7 @@ app.use(express.json());
 
 // Serve static files from the 'public' directory
 app.use('/audio', express.static(path.join(__dirname, 'audio')));
+app.use('/static', express.static(path.join(__dirname, 'static')));
 
 // Create HTTP server
 const server = http.createServer(app);
@@ -58,6 +59,10 @@ try {
 
 // Home route - serve highlight HTML
 app.get('/', (req, res) => {
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  
   res.send(`<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -120,6 +125,11 @@ app.get('/', (req, res) => {
         .platform-icon {
             margin-right: 5px;
             vertical-align: middle;
+            width: 20px;
+            height: 20px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
         }
         
         svg.platform-icon {
@@ -163,6 +173,49 @@ app.get('/', (req, res) => {
         img.emoji {
             height: 1.2em !important;
             width: auto !important;
+        }
+        
+        /* Profile picture styling */
+        .profile-picture {
+            width: 24px !important;
+            height: 24px !important;
+            border-radius: 50% !important;
+            margin-right: 8px !important;
+            vertical-align: middle !important;
+            object-fit: cover !important;
+        }
+        
+        /* Hide profile pictures for YouTube specifically */
+        .youtube .profile-picture {
+            display: none !important;
+        }
+        
+        /* Badge styling */
+        .badges {
+            display: inline-flex !important;
+            align-items: center !important;
+            margin-right: 6px !important;
+        }
+        
+        /* Hide badges for YouTube specifically */
+        .youtube .badges {
+            display: none !important;
+        }
+        
+        .badges:empty {
+            display: none !important;
+            margin: 0 !important;
+        }
+        
+        .badge {
+            display: inline-block !important;
+            width: 18px !important;
+            height: 18px !important;
+            margin-right: 4px !important;
+            background-size: contain !important;
+            background-repeat: no-repeat !important;
+            background-position: center !important;
+            vertical-align: middle !important;
         }
         
         @keyframes slideInFromRight {
@@ -291,16 +344,48 @@ app.get('/', (req, res) => {
                 iconHtml = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="platform-icon"><path d="M11.571 4.714h1.715v5.143H11.57v-5.143zm4.715 0H18v5.143h-1.714v-5.143zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0H6zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714v9.429z" fill="#9146FF"/></svg>';
             }
             
-            // Create HTML with improved structure
-            highlightedContainer.innerHTML = \`
-                <div class="message-row">
-                    <div class="message-container">
-                        \${iconHtml}
-                        <span class="username">\${message.username}</span>: 
-                        <span class="message-content">\${message.content || ''}</span>
+            // Create badges HTML - only for Twitch
+            let badgesHtml = '';
+            if (message.platform.toLowerCase() === 'twitch' && message.badges && message.badges.length > 0) {
+                badgesHtml = '<div class="badges">';
+                message.badges.forEach(badge => {
+                    badgesHtml += \`<span class="badge" style="background-image: url('\${badge}')"></span>\`;
+                });
+                badgesHtml += '</div>';
+            }
+            
+            // Add profile picture if available (for Twitch only)
+            let profilePicHtml = '';
+            if (message.platform.toLowerCase() === 'twitch' && message.profilePicture) {
+                profilePicHtml = \`<img src="\${message.profilePicture}" class="profile-picture">\`;
+            }
+            
+            // Platform-specific message structure
+            if (message.platform.toLowerCase() === 'youtube') {
+                // YouTube - simpler format without badges or profile picture
+                highlightedContainer.innerHTML = \`
+                    <div class="message-row">
+                        <div class="message-container">
+                            \${iconHtml}
+                            <span class="username">\${message.username}</span>: 
+                            <span class="message-content">\${message.content || ''}</span>
+                        </div>
                     </div>
-                </div>
-            \`;
+                \`;
+            } else {
+                // Twitch - include badges and profile picture
+                highlightedContainer.innerHTML = \`
+                    <div class="message-row">
+                        <div class="message-container">
+                            \${profilePicHtml}
+                            \${iconHtml}
+                            \${badgesHtml}
+                            <span class="username">\${message.username}</span>: 
+                            <span class="message-content">\${message.content || ''}</span>
+                        </div>
+                    </div>
+                \`;
+            }
             
             // Apply slide-in animation and show - use table display
             highlightedContainer.style.animation = 'slideInFromRight 0.5s ease-in-out';
@@ -423,6 +508,17 @@ const audioDir = path.join(__dirname, 'audio');
 if (!fs.existsSync(audioDir)) {
   fs.mkdirSync(audioDir, { recursive: true });
   console.log('Created audio directory:', audioDir);
+}
+
+// Static directories for badges and other assets
+const staticDir = path.join(__dirname, 'static');
+if (!fs.existsSync(staticDir)) {
+  fs.mkdirSync(staticDir, { recursive: true });
+  console.log('Created static directory:', staticDir);
+  
+  // Create subdirectories
+  fs.mkdirSync(path.join(staticDir, 'badges'), { recursive: true });
+  console.log('Created badges directory');
 }
 
 // Export module functions and objects

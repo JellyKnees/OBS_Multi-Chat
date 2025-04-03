@@ -1,12 +1,12 @@
 {
   "twitch": {
     "enabled": true,
-    "channelName": "darthmicrotransaction"
+    "channelName": "Bushy"
   },
   "youtube": {
     "enabled": true,
     "channelId": null,
     "videoId": null,
-    "channelUsername": "destiny"
+    "channelUsername": "Bushy"
   }
 }

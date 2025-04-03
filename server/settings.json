@@ -19,7 +19,8 @@
     "showBadges": true,
     "showTimestamps": false,
     "showPlatforms": true,
-    "showMessageBackground": false
+    "showMessageBackground": false,
+    "showProfilePictures": true
   },
   "streamerView": {
     "fontSize": 16,
@@ -36,7 +37,8 @@
     "showBadges": true,
     "showTimestamps": false,
     "showPlatforms": true,
-    "showMessageBackground": false
+    "showMessageBackground": false,
+    "showProfilePictures": true
   },
   "fontSize": 16,
   "textColor": "#ffffff",
@@ -44,8 +46,9 @@
   "chatHeight": "500px",
   "enableDropShadow": true,
   "theme": "light",
-  "showBadges": true,
+  "showBadges": false,
   "showTimestamps": false,
   "showPlatforms": true,
-  "backgroundColor": "#222222"
+  "backgroundColor": "#222222",
+  "showProfilePictures": true
 }

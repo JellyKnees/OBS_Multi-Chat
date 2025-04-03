@@ -12,6 +12,18 @@ document.addEventListener('DOMContentLoaded', () => {
             text-shadow: 1px 1px 2px rgba(0,0,0,0.8) !important;
             margin-bottom: 8px !important;
         }
+        .profile-picture {
+            width: 24px !important;
+            height: 24px !important;
+            border-radius: 50% !important;
+            margin-right: 8px !important;
+            vertical-align: middle !important;
+            object-fit: cover !important;
+        }
+        .badges:empty {
+            display: none !important;
+            margin: 0 !important;
+        }
         .youtube .username {
             color: #ff0000 !important;
             font-family: 'Inter', sans-serif !important;
@@ -118,71 +130,85 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
-    // Function to add a chat message
-// Function to add a chat message
-function addChatMessage(message) {
-    const messageElement = document.createElement('div');
-    messageElement.classList.add('chat-message');
-    messageElement.classList.add(message.platform.toLowerCase());
-    messageElement.dataset.id = message.id;
-    
-    // Create the message header container
-    const messageHeader = document.createElement('div');
-    messageHeader.className = 'message-header';
-    
-    // Add platform icon
-    const platformIcon = document.createElement('span');
-    platformIcon.className = 'platform-icon';
-    messageHeader.appendChild(platformIcon);
-    
-    // Add badges BEFORE username (creating as actual elements)
-    if (message.badges && message.badges.length > 0) {
-        const badgesContainer = document.createElement('div');
-        badgesContainer.className = 'badges';
+    // Update the addChatMessage function in overlay/app.js to handle SVG badges
+
+    function addChatMessage(message) {
+        const messageElement = document.createElement('div');
+        messageElement.classList.add('chat-message');
+        messageElement.classList.add(message.platform.toLowerCase());
+        messageElement.dataset.id = message.id;
         
-        message.badges.forEach(badge => {
-            const badgeImg = document.createElement('img');
-            badgeImg.className = 'badge';
-            badgeImg.src = badge;
-            badgeImg.alt = 'Badge';
-            badgesContainer.appendChild(badgeImg);
+        // Create the message header container
+        const messageHeader = document.createElement('div');
+        messageHeader.className = 'message-header';
+        
+        // Add profile picture if available (for YouTube)
+        if (message.profilePicture) {
+            const profilePic = document.createElement('img');
+            profilePic.className = 'profile-picture';
+            profilePic.src = message.profilePicture;
+            profilePic.alt = '';
+            messageHeader.appendChild(profilePic);
+        }
+        
+        // Add platform icon
+        const platformIcon = document.createElement('span');
+        platformIcon.className = 'platform-icon';
+        messageHeader.appendChild(platformIcon);
+        
+        // Add badges BEFORE username (creating as actual elements)
+        if (message.badges && message.badges.length > 0) {
+            const badgesContainer = document.createElement('div');
+            badgesContainer.className = 'badges';
+            
+            message.badges.forEach(badge => {
+                const badgeImg = document.createElement('img');
+                badgeImg.className = 'badge';
+                badgeImg.src = badge;
+                badgeImg.alt = 'Badge';
+                badgesContainer.appendChild(badgeImg);
+            });
+            
+            messageHeader.appendChild(badgesContainer);
+        } else {
+            // Add an empty badges container that won't take up space
+            const emptyBadges = document.createElement('div');
+            emptyBadges.className = 'badges';
+            messageHeader.appendChild(emptyBadges);
+        }
+        
+        // Add username AFTER badges
+        const usernameSpan = document.createElement('span');
+        usernameSpan.className = 'username';
+        usernameSpan.textContent = message.username;
+        messageHeader.appendChild(usernameSpan);
+        
+        // Create message content
+        const contentDiv = document.createElement('div');
+        contentDiv.className = 'message-content';
+        contentDiv.innerHTML = message.content;
+        
+        // Add all elements to the message
+        messageElement.appendChild(messageHeader);
+        messageElement.appendChild(contentDiv);
+        
+        // Add click event to highlight message
+        messageElement.addEventListener('click', () => {
+            socket.emit('highlight-message', message.id);
         });
         
-        messageHeader.appendChild(badgesContainer);
+        // Add to chat container
+        chatContainer.appendChild(messageElement);
+        
+        // Keep only the last 50 messages in the DOM
+        const messages = chatContainer.getElementsByClassName('chat-message');
+        while (messages.length > 50) {
+            chatContainer.removeChild(messages[0]);
+        }
+        
+        // Auto-scroll if not manually scrolled up
+        if (!userScrolled) {
+            scrollToBottom();
+        }
     }
-    
-    // Add username AFTER badges
-    const usernameSpan = document.createElement('span');
-    usernameSpan.className = 'username';
-    usernameSpan.textContent = message.username;
-    messageHeader.appendChild(usernameSpan);
-    
-    // Create message content
-    const contentDiv = document.createElement('div');
-    contentDiv.className = 'message-content';
-    contentDiv.innerHTML = message.content;
-    
-    // Add all elements to the message
-    messageElement.appendChild(messageHeader);
-    messageElement.appendChild(contentDiv);
-    
-    // Add click event to highlight message
-    messageElement.addEventListener('click', () => {
-        socket.emit('highlight-message', message.id);
-    });
-    
-    // Add to chat container
-    chatContainer.appendChild(messageElement);
-    
-    // Keep only the last 50 messages in the DOM
-    const messages = chatContainer.getElementsByClassName('chat-message');
-    while (messages.length > 50) {
-        chatContainer.removeChild(messages[0]);
-    }
-    
-    // Auto-scroll if not manually scrolled up
-    if (!userScrolled) {
-        scrollToBottom();
-    }
-}
 });

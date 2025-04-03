@@ -163,7 +163,7 @@ class ChatIntegration extends EventEmitter {
     return this.getStatus();
   }
 
-  processYouTubeUrl(url) {
+    processYouTubeUrl(url) {
     try {
       console.log(`Processing YouTube URL: ${url}`);
       
@@ -376,42 +376,43 @@ class ChatIntegration extends EventEmitter {
           this.emit('status-updated', this.getStatus());
         });
       
-      this.sources.twitch.client.on('message', (channel, tags, message, self) => {
-        if (self) return;
-        
-        const messageTimestamp = new Date(parseInt(tags['tmi-sent-ts']));
-        if (messageTimestamp < this.sources.twitch.connectionTimestamp) {
-          console.log(`Skipping historical Twitch message from ${tags['display-name']}`);
-          return;
-        }
-        
-        const badges = [];
-        if (tags.badges) {
-          for (const [type, version] of Object.entries(tags.badges)) {
-            const globalBadgeKey = `global_${type}/${version}`;
-            const channelBadgeKey = `channel_${type}/${version}`;
-            
-            const badgeUrl = channelBadgeMap[channelBadgeKey] || 
-                             channelBadgeMap[globalBadgeKey] || 
-                             `https://static-cdn.jtvnw.net/badges/v1/${type}/${version}/3`;
-            
-            badges.push(badgeUrl);
+        this.sources.twitch.client.on('message', (channel, tags, message, self) => {
+          if (self) return;
+          
+          const messageTimestamp = new Date(parseInt(tags['tmi-sent-ts']));
+          if (messageTimestamp < this.sources.twitch.connectionTimestamp) {
+            console.log(`Skipping historical Twitch message from ${tags['display-name']}`);
+            return;
           }
-        }
-        
-        const chatMessage = {
-          platform: 'twitch',
-          username: tags['display-name'] || tags.username,
-          content: message,
-          color: tags.color || this.getColorFromUsername(tags.username),
-          badges: badges,
-          timestamp: messageTimestamp.toISOString(),
-          id: `twitch-${tags.id || Date.now()}-${Math.random().toString(36).substr(2, 9)}`
-        };
-        
-        console.log(`Processing Twitch message from ${chatMessage.username} with ${badges.length} badges`);
-        this.emit('chat-message', chatMessage);
-      });
+          
+          const badges = [];
+          if (tags.badges) {
+            for (const [type, version] of Object.entries(tags.badges)) {
+              const globalBadgeKey = `global_${type}/${version}`;
+              const channelBadgeKey = `channel_${type}/${version}`;
+              
+              const badgeUrl = channelBadgeMap[channelBadgeKey] || 
+                               channelBadgeMap[globalBadgeKey] || 
+                               `https://static-cdn.jtvnw.net/badges/v1/${type}/${version}/1`;
+              
+              badges.push(badgeUrl);
+            }
+          }
+          
+          const chatMessage = {
+            platform: 'twitch',
+            username: username,
+            content: content,
+            badges: badges || [], // Ensure badges is always at least an empty array
+            profilePicture: profilePicture || null,
+            timestamp: messageTimestamp.toISOString(),
+            id: `twitch-${tags.id || Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+          };
+          
+          console.log(`Processing Twitch message from ${chatMessage.username} with ${badges.length} badges`);
+          this.emit('chat-message', chatMessage);
+        });
+
     } catch (error) {
       console.error(`Error in connectTwitch:`, error);
       this.sources.twitch.connected = false;
@@ -610,24 +611,14 @@ class ChatIntegration extends EventEmitter {
             
             const chatMessage = {
               platform: 'youtube',
-              username: item.authorDetails.displayName,
-              content: item.snippet.displayMessage,
-              color: this.getColorFromUsername(item.authorDetails.displayName),
-              badges: [],
+              username: username,
+              content: content,
+              badges: badges || [], // Ensure badges is always at least an empty array
               timestamp: messageTimestamp,
-              id: `youtube-${item.id}-${Math.random().toString(36).substr(2, 9)}`
+              id: `youtube-${item.id}-${Math.random().toString(36).substr(2, 9)}`,
+              profilePicture: null
             };
-            
-            if (item.authorDetails.isChatOwner) {
-              chatMessage.badges.push('https://www.gstatic.com/youtube/img/creator_badges/owner.png');
-            }
-            if (item.authorDetails.isChatModerator) {
-              chatMessage.badges.push('https://www.gstatic.com/youtube/img/creator_badges/moderator.png');
-            }
-            if (item.authorDetails.isChatSponsor) {
-              chatMessage.badges.push('https://www.gstatic.com/youtube/img/creator_badges/sponsor.png');
-            }
-            
+                   
             console.log(`Processing YouTube message from ${chatMessage.username}`);
             this.emit('chat-message', chatMessage);
           });

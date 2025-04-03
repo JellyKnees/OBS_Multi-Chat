@@ -27,6 +27,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const obsMsgPaddingValue = getElement('obs-messagePaddingValue');
   const obsShowTimestampsInput = getElement('obs-showTimestamps');
   const obsShowPlatformsInput = getElement('obs-showPlatforms');
+  const obsShowBadgesInput = getElement('obs-showBadges');
+  const obsShowProfilePicturesInput = getElement('obs-showProfilePictures');
   
   // Streamer View elements
   const streamerFontSizeInput = getElement('streamer-fontSize');
@@ -45,6 +47,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const streamerMsgPaddingValue = getElement('streamer-messagePaddingValue');
   const streamerShowTimestampsInput = getElement('streamer-showTimestamps');
   const streamerShowPlatformsInput = getElement('streamer-showPlatforms');
+  const streamerShowBadgesInput = getElement('streamer-showBadges');
+  const streamerShowProfilePicturesInput = getElement('streamer-showProfilePictures');
   
   // Common elements
   const messageLimitInput = getElement('messageLimit');
@@ -127,7 +131,9 @@ document.addEventListener('DOMContentLoaded', () => {
       enableDropShadow: true,
       showMessageBackground: true,
       showTimestamps: false,
-      showPlatforms: true
+      showPlatforms: true,
+      showBadges: false,
+      showProfilePictures: true
     },
     
     streamerView: {
@@ -142,6 +148,8 @@ document.addEventListener('DOMContentLoaded', () => {
       enableDropShadow: true,
       showTimestamps: false,
       showPlatforms: true,
+      showBadges: false,
+      showProfilePictures: true,
       showMessageBackground: true
     }
   };
@@ -302,6 +310,16 @@ document.addEventListener('DOMContentLoaded', () => {
         obsShowPlatformsInput.checked = settings.obsView.showPlatforms !== undefined ? 
           settings.obsView.showPlatforms : defaultSettings.obsView.showPlatforms;
       }
+      
+      if (obsShowBadgesInput) {
+        obsShowBadgesInput.checked = settings.obsView.showBadges !== undefined ? 
+          settings.obsView.showBadges : defaultSettings.obsView.showBadges;
+      }
+      
+      if (obsShowProfilePicturesInput) {
+        obsShowProfilePicturesInput.checked = settings.obsView.showProfilePictures !== undefined ? 
+          settings.obsView.showProfilePictures : defaultSettings.obsView.showProfilePictures;
+      }
     }
 
     // Update Streamer View form inputs
@@ -368,6 +386,16 @@ document.addEventListener('DOMContentLoaded', () => {
         streamerShowPlatformsInput.checked = settings.streamerView.showPlatforms !== undefined ? 
           settings.streamerView.showPlatforms : defaultSettings.streamerView.showPlatforms;
       }
+      
+      if (streamerShowBadgesInput) {
+        streamerShowBadgesInput.checked = settings.streamerView.showBadges !== undefined ? 
+          settings.streamerView.showBadges : defaultSettings.streamerView.showBadges;
+      }
+      
+      if (streamerShowProfilePicturesInput) {
+        streamerShowProfilePicturesInput.checked = settings.streamerView.showProfilePictures !== undefined ? 
+          settings.streamerView.showProfilePictures : defaultSettings.streamerView.showProfilePictures;
+      }
     }
     
     // Update Common form inputs
@@ -427,7 +455,9 @@ document.addEventListener('DOMContentLoaded', () => {
         enableDropShadow: obsEnableDropShadowInput ? obsEnableDropShadowInput.checked : defaultSettings.obsView.enableDropShadow,
         showMessageBackground: obsShowMessageBackgroundInput ? obsShowMessageBackgroundInput.checked : defaultSettings.obsView.showMessageBackground,
         showTimestamps: obsShowTimestampsInput ? obsShowTimestampsInput.checked : defaultSettings.obsView.showTimestamps,
-        showPlatforms: obsShowPlatformsInput ? obsShowPlatformsInput.checked : defaultSettings.obsView.showPlatforms
+        showPlatforms: obsShowPlatformsInput ? obsShowPlatformsInput.checked : defaultSettings.obsView.showPlatforms,
+        showBadges: obsShowBadgesInput ? obsShowBadgesInput.checked : defaultSettings.obsView.showBadges,
+        showProfilePictures: obsShowProfilePicturesInput ? obsShowProfilePicturesInput.checked : defaultSettings.obsView.showProfilePictures
       },
       
       streamerView: {
@@ -442,7 +472,9 @@ document.addEventListener('DOMContentLoaded', () => {
         enableDropShadow: streamerEnableDropShadowInput ? streamerEnableDropShadowInput.checked : defaultSettings.streamerView.enableDropShadow,
         showMessageBackground: streamerShowMessageBackgroundInput ? streamerShowMessageBackgroundInput.checked : true,
         showTimestamps: streamerShowTimestampsInput ? streamerShowTimestampsInput.checked : defaultSettings.streamerView.showTimestamps,
-        showPlatforms: streamerShowPlatformsInput ? streamerShowPlatformsInput.checked : defaultSettings.streamerView.showPlatforms
+        showPlatforms: streamerShowPlatformsInput ? streamerShowPlatformsInput.checked : defaultSettings.streamerView.showPlatforms,
+        showBadges: streamerShowBadgesInput ? streamerShowBadgesInput.checked : defaultSettings.streamerView.showBadges,
+        showProfilePictures: streamerShowProfilePicturesInput ? streamerShowProfilePicturesInput.checked : defaultSettings.streamerView.showProfilePictures
       }
     };
     
