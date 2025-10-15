@@ -989,6 +989,7 @@ function generateHighlightHTML(settings) {
             cursor: pointer;
             min-width: 200px;
             max-width: 80%;
+            width: fit-content;
             text-align: left;
             align-self: flex-end;
             table-layout: auto;
