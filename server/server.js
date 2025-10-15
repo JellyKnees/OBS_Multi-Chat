@@ -8,21 +8,27 @@ const io = require('socket.io-client');
 
 // Initialize Express app for main chat
 const app = express();
-app.use(cors());
+app.use(cors({
+    origin: '*', // Allow all origins for extension connections
+    methods: ['GET', 'POST'],
+    credentials: true
+  }));
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '../overlay')));
+
+
 
 // Create HTTP server for main chat
 const server = http.createServer(app);
 
-// Initialize Socket.IO for main chat
+// Update Socket.IO configuration
 const chatIo = socketIo(server, {
-  cors: {
-    origin: "*",
-    methods: ["GET", "POST"],
-    credentials: true
-  }
-});
+    cors: {
+      origin: "*",
+      methods: ["GET", "POST"],
+      credentials: true
+    }
+  });
 
 // Connect to highlight server as a client
 const highlightSocket = io('http://localhost:3001');
@@ -116,13 +122,15 @@ chatIo.on('connection', (socket) => {
       socket.emit('chat-history', chatMessages.slice(-settings.messageLimit));
     }
   
-  // Handle new chat messages
-  socket.on('chat-message', (message) => {
+  // Handle new chat messages from extension or other sources
+socket.on('chat-message', (message) => {
     // Validate message structure
     if (!message || !message.platform || !message.username || !message.content) {
       console.error('Invalid message format:', message);
       return;
     }
+    
+    console.log(`Received ${message.platform} message from ${message.username}`);
     
     // Add timestamp and unique ID if not present
     if (!message.id) {

@@ -9,7 +9,7 @@
     "textColor": "#ffffff",
     "backgroundColor": "#000000",
     "messageBackgroundColor": "#222222",
-    "messageOpacity": 0.7,
+    "messageOpacity": 0.2,
     "messageBorderRadius": 4,
     "messagePadding": 4,
     "chatWidth": "100%",

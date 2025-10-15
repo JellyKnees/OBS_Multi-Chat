@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$(cat <<''EOF''\nAdd Railway deployment support with unified server\n\n- Created unified-server.js combining all 3 servers on single port\n- Implemented Socket.IO namespaces for chat, highlight, and dashboard\n- Updated package.json to use unified server as default\n- Added .env.example for Railway environment variables\n- Created comprehensive Railway deployment guide\n- Updated dashboard to connect to /dashboard namespace\n- All services now accessible via different paths on one domain\n\nNew URL structure:\n- / - Main chat\n- /obs-view - OBS overlay\n- /streamer-view - Streamer control view\n- /highlight - Highlighted messages\n- /dashboard - Customization dashboard\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(git config:*)",
+      "Bash(git push:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

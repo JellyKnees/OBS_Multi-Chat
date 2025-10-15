@@ -2,6 +2,7 @@ const { spawn } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 const readline = require('readline');
+const { autoOpenYouTubeChat } = require('./server/auto-open-youtube-chat');
 
 // Colors for console output
 const colors = {
@@ -219,6 +220,11 @@ async function startAllServers() {
         Press [Ctrl+C] to stop all servers
       ==========================================================${colors.reset}
       `);
+
+      console.log(`${colors.info}Opening YouTube Live Chat...${colors.reset}`);
+      setTimeout(() => {
+        autoOpenYouTubeChat();
+      }, 2000);
 
     // Track all running servers
     const servers = [

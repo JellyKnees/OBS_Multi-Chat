@@ -88,14 +88,17 @@ class ChatIntegration extends EventEmitter {
         enabled: this.sources.twitch.enabled,
         channelName: this.sources.twitch.channelName,
         connected: this.sources.twitch.connected,
-        lastError: this.sources.twitch.lastError
+        lastError: this.sources.twitch.lastError,
+        connectionSource: this.sources.twitch.connectionSource || 'api'
       },
       youtube: {
         enabled: this.sources.youtube.enabled,
         channelId: this.sources.youtube.channelId,
         videoId: this.sources.youtube.videoId,
         connected: this.sources.youtube.connected,
-        lastError: this.sources.youtube.lastError
+        lastError: this.sources.youtube.lastError,
+        connectionSource: this.sources.youtube.connectionSource || 'extension',
+        apiKeyConfigured: !!process.env.YOUTUBE_API_KEY
       }
     };
   }
@@ -108,41 +111,41 @@ class ChatIntegration extends EventEmitter {
         
       const youtubeChanged = 
         this.sources.youtube.enabled !== youtubeEnabled ||
-        config.youtube.url !== undefined ||
-        config.youtube.apiKey !== undefined;
+        config.youtube.url !== undefined;
       
       this.sources.youtube.enabled = youtubeEnabled;
       
-      // Process YouTube URL if provided
+      // Process YouTube URL if provided (for UI display only)
       if (config.youtube.url) {
-        // Reset all previous IDs whenever a new URL is provided
+        // Reset all previous IDs whenever a new URL is provided (for display in dashboard)
         this.sources.youtube.channelId = null;
         this.sources.youtube.videoId = null;
         this.sources.youtube.channelUsername = null;
         this.sources.youtube.liveChatId = null;
         
+        // Process the URL to extract info for the dashboard
         this.processYouTubeUrl(config.youtube.url);
       }
       
-      // Update API key in environment variable if provided
-      if (config.youtube.apiKey) {
-        process.env.YOUTUBE_API_KEY = config.youtube.apiKey;
-        console.log('Updated YouTube API key in environment');
-      }
-      
-      // Save configuration to file (API key excluded)
+      // Save configuration to file
       this.saveConfig();
       
-      // Reconnect if needed
+      // Update connection status if needed
       if (youtubeChanged) {
-        if (this.sources.youtube.enabled && process.env.YOUTUBE_API_KEY) {
-          this.connectYouTube();
+        if (this.sources.youtube.enabled) {
+          // Mark as connected - actual connection is handled by extension
+          this.sources.youtube.connected = true;
+          this.sources.youtube.lastError = '';
+          this.sources.youtube.connectionSource = 'extension';
+          this.emit('status-updated', this.getStatus());
         } else {
+          // Disable YouTube integration
           this.disconnectYouTube();
         }
       }
     }
     
+    // Update Twitch config (keep this part as is)
     if (config.twitch) {
       const twitchEnabled = config.twitch.enabled !== undefined ?
         config.twitch.enabled : this.sources.twitch.enabled;
@@ -441,7 +444,17 @@ class ChatIntegration extends EventEmitter {
     this.emit('status-updated', this.getStatus());
   }
   
+  
   async connectYouTube() {
+    // If using extension, mark as extension-based integration
+    this.sources.youtube.connected = true;
+    this.sources.youtube.lastError = '';
+    this.sources.youtube.connectionSource = 'extension';
+    this.emit('status-updated', this.getStatus());
+    console.log('YouTube integration now using browser extension');
+  }
+
+    /*
     this.disconnectYouTube();
     
     // Check if YouTube API key is available in environment
@@ -490,8 +503,9 @@ class ChatIntegration extends EventEmitter {
       this.sources.youtube.lastError = error.message;
       this.emit('status-updated', this.getStatus());
     }
-  }
+  }*/
   
+    /*
   async resolveChannelId() {
     try {
       console.log(`Resolving channel username: ${this.sources.youtube.channelUsername}`);
@@ -527,7 +541,9 @@ class ChatIntegration extends EventEmitter {
       throw error;
     }
   }
+    */
 
+  /*
   async findActiveLiveStream() {
     try {
       console.log(`Finding active livestreams for channel ID: ${this.sources.youtube.channelId}`);
@@ -554,6 +570,7 @@ class ChatIntegration extends EventEmitter {
     }
   }
   
+  /*
   async getLiveChatId() {
     try {
       const response = await axios.get(
@@ -576,20 +593,19 @@ class ChatIntegration extends EventEmitter {
       throw error;
     }
   }
+    */
   
   startYouTubeChatPolling() {
-    if (this.sources.youtube.pollingInterval) {
-      clearInterval(this.sources.youtube.pollingInterval);
-    }
-    
-    this.sources.youtube.connectionTimestamp = new Date().toISOString();
-    console.log(`YouTube connection established at: ${this.sources.youtube.connectionTimestamp}`);
-    
-    this.sources.youtube.nextPageToken = null;
-    
-    this.sources.youtube.connected = true;
-    this.sources.youtube.lastError = '';
-    this.emit('status-updated', this.getStatus());
+    // With extension-based integration, no polling is needed
+    console.log('YouTube chat polling via API is disabled - using extension instead');
+
+    // Just mark as connected for status reporting
+  this.sources.youtube.connected = true;
+  this.sources.youtube.lastError = '';
+  this.emit('status-updated', this.getStatus());
+}
+
+    /*
     
     const pollChatMessages = async () => {
       try {
@@ -650,12 +666,15 @@ class ChatIntegration extends EventEmitter {
       }
     };
     
+    
     setTimeout(pollChatMessages, 1000);
     
     this.sources.youtube.pollingInterval = setInterval(pollChatMessages, 5000);
   }
+    */
 
-  disconnectYouTube() {
+  /*
+    disconnectYouTube() {
     if (this.sources.youtube.pollingInterval) {
       clearInterval(this.sources.youtube.pollingInterval);
       this.sources.youtube.pollingInterval = null;
@@ -666,6 +685,8 @@ class ChatIntegration extends EventEmitter {
     this.sources.youtube.nextPageToken = null;
     this.emit('status-updated', this.getStatus());
   }
+
+  */
   
   getColorFromUsername(username) {
     let hash = 0;

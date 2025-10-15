@@ -1,11 +1,11 @@
 {
   "twitch": {
     "enabled": true,
-    "channelName": "rocketleague"
+    "channelName": "JellyKnees"
   },
   "youtube": {
     "enabled": true,
-    "channelId": null,
+    "channelId": "UCFC6Y2Tzl1uTBp0SDA4vflA",
     "videoId": null,
     "channelUsername": null
   }
