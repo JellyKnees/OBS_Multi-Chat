@@ -459,24 +459,22 @@ document.addEventListener('DOMContentLoaded', () => {
         apiKey: youtubeApiKeyInput ? youtubeApiKeyInput.value.trim() : ''
       }
     };
-    
-    // Validate inputs
+
+    // Validate inputs - ONLY if the service is enabled
     if (config.twitch.enabled && !config.twitch.channelName) {
-      showStatus('Twitch channel name is required', 'error');
+      showStatus('Twitch channel name is required when Twitch is enabled', 'error');
       return;
     }
-    
-    if (config.youtube.enabled) {
-      if (!config.youtube.url) {
-        showStatus('YouTube channel or video URL is required', 'error');
-        return;
-      }
 
-      // API key is optional - extension can be used instead
-      // if (!config.youtube.apiKey) {
-      //   showStatus('YouTube API key is required', 'error');
-      //   return;
-      // }
+    if (config.youtube.enabled && !config.youtube.url) {
+      showStatus('YouTube channel or video URL is required when YouTube is enabled', 'error');
+      return;
+    }
+
+    // If both are disabled or have valid inputs, proceed
+    if (!config.twitch.enabled && !config.youtube.enabled) {
+      showStatus('At least one chat source should be enabled', 'info');
+      // Continue anyway to allow disabling both
     }
     
     // Send configuration to server
