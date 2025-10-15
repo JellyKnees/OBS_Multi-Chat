@@ -153,7 +153,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let socket;
   try {
     console.log("Connecting to Socket.IO server...");
-    socket = io();
+    socket = io('/dashboard');
     
     socket.on('connect', () => {
       console.log("Connected to Socket.IO server");

@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OBS Chat Overlay</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            width: 320px;
+            padding: 15px;
+            margin: 0;
+            color: #333;
+        }
+        
+        h1 {
+            font-size: 18px;
+            margin-top: 0;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        
+        .status-section {
+            background-color: #f5f5f5;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 15px;
+        }
+        
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        
+        .indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        .connected {
+            background-color: #4CAF50;
+        }
+        
+        .disconnected {
+            background-color: #F44336;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        
+        input[type="text"] {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        
+        button {
+            background-color: #4285F4;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            width: 100%;
+        }
+        
+        button:hover {
+            background-color: #3367D6;
+        }
+        
+        .instructions {
+            margin-top: 15px;
+            font-size: 13px;
+            line-height: 1.4;
+            color: #666;
+        }
+        
+        .platform-status {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+        
+        .platform {
+            display: flex;
+            align-items: center;
+            width: 48%;
+            background-color: #f9f9f9;
+            padding: 8px;
+            border-radius: 4px;
+        }
+        
+        .platform-icon {
+            width: 16px;
+            height: 16px;
+            margin-right: 8px;
+        }
+        
+        footer {
+            margin-top: 15px;
+            font-size: 11px;
+            text-align: center;
+            color: #999;
+        }
+    </style>
+</head>
+<body>
+    <h1>OBS Multi-Platform Chat Overlay</h1>
+    
+    <div class="platform-status">
+        <div class="platform">
+            <img src="icons/youtube.png" alt="YouTube" class="platform-icon">
+            <span>YouTube: <span id="youtube-status">Not detected</span></span>
+        </div>
+        <div class="platform">
+            <img src="icons/twitch.png" alt="Twitch" class="platform-icon">
+            <span>Twitch: <span id="twitch-status">Not detected</span></span>
+        </div>
+    </div>
+    
+    <div class="status-section">
+        <div class="status-indicator">
+            <div id="server-indicator" class="indicator disconnected"></div>
+            <span>Server connection: <span id="connection-status">Disconnected</span></span>
+        </div>
+        <div class="status-indicator">
+            <div id="overlay-indicator" class="indicator disconnected"></div>
+            <span>OBS overlay: <span id="overlay-status">Not detected</span></span>
+        </div>
+    </div>
+    
+    <div>
+        <label for="server-url">Server URL:</label>
+        <input type="text" id="server-url" placeholder="http://localhost:3000" value="http://localhost:3000">
+    </div>
+    
+    <button id="connect-button">Connect to Server</button>
+    
+    <div class="instructions">
+        <p><strong>How to use:</strong></p>
+        <ol>
+            <li>Start the local server on your computer</li>
+            <li>Connect this extension to the server</li>
+            <li>Keep YouTube or Twitch chat pages open</li>
+            <li>Add the overlay URL as a Browser Source in OBS</li>
+        </ol>
+    </div>
+    
+    <footer>
+        OBS Multi-Platform Chat Overlay v1.0.0
+    </footer>
+
+    <script src="popup.js"></script>
+</body>
+</html>
