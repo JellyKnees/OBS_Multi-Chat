@@ -471,11 +471,12 @@ document.addEventListener('DOMContentLoaded', () => {
         showStatus('YouTube channel or video URL is required', 'error');
         return;
       }
-      
-      if (!config.youtube.apiKey) {
-        showStatus('YouTube API key is required', 'error');
-        return;
-      }
+
+      // API key is optional - extension can be used instead
+      // if (!config.youtube.apiKey) {
+      //   showStatus('YouTube API key is required', 'error');
+      //   return;
+      // }
     }
     
     // Send configuration to server
