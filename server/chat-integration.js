@@ -673,20 +673,17 @@ class ChatIntegration extends EventEmitter {
   }
     */
 
-  /*
-    disconnectYouTube() {
+  disconnectYouTube() {
     if (this.sources.youtube.pollingInterval) {
       clearInterval(this.sources.youtube.pollingInterval);
       this.sources.youtube.pollingInterval = null;
     }
-    
+
     this.sources.youtube.connected = false;
     this.sources.youtube.liveChatId = '';
     this.sources.youtube.nextPageToken = null;
     this.emit('status-updated', this.getStatus());
   }
-
-  */
   
   getColorFromUsername(username) {
     let hash = 0;
